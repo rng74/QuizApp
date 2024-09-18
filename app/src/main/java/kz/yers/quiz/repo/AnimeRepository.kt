@@ -64,10 +64,10 @@ class AnimeRepository(
         isGreater: Boolean? = null
     ): List<QuizQuestion> {
         val shuffledAnimeList = animeList.filter {
-            if (rating != null && isGreater != null) {
-                if (isGreater) it.rating > rating
+            (if (rating != null && isGreater != null) {
+                if (isGreater) it.rating > rating && it.albumName.endsWith("OP")
                 else it.rating <= rating
-            } else true
+            } else true)
         }.shuffled().distinctBy { it.titleRu }
         val totalQuestions = minOf(numberOfQuestions, shuffledAnimeList.size)
         val questions = mutableListOf<QuizQuestion>()
