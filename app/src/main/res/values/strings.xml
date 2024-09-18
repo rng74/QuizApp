@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Quiz App</string>
+    <string name="with_poster">With Poster</string>
+    <string name="without_poster">Without Poster</string>
+    <string name="your_high_score_is">Your high score is: %1$s</string>
+    <string name="select_game_mode">Select Game Mode</string>
+    <string name="quiz_finished">Quiz Finished!</string>
+    <string name="your_score">Your Score: %1$s</string>
+    <string name="play_again">Play Again</string>
+    <string name="score">Score: %1$s</string>
+    <string name="correct">Correct!</string>
+    <string name="incorrect">Incorrect</string>
+    <string name="next_question">Next Question</string>
+    <string name="check_results">Check Results</string>
+    <string name="loading">Loading…</string>
+</resources>
