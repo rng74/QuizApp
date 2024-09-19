@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Викторина</string>
+    <string name="app_name">Угадай аниме по саундтреку</string>
     <string name="with_poster">С постером</string>
     <string name="without_poster">Без постера</string>
     <string name="your_high_score_is">Ваш лучший счёт: %1$s</string>
