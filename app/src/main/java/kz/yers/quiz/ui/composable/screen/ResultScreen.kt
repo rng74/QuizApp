@@ -1,5 +1,6 @@
 package kz.yers.quiz.ui.composable.screen
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,15 +12,30 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.google.android.play.core.review.ReviewManager
+import com.google.android.play.core.review.ReviewManagerFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kz.yers.quiz.R
 
 @Composable
-fun ResultScreen(score: Int, onRestart: () -> Unit) {
+fun ResultScreen(
+    score: Int,
+    needToAskReview: Boolean,
+    onReviewSuccess: () -> Unit,
+    onRestart: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -48,5 +64,44 @@ fun ResultScreen(score: Int, onRestart: () -> Unit) {
         ) {
             Text(text = stringResource(R.string.play_again), color = Color.White)
         }
+    }
+    if (needToAskReview) {
+        val localContext = LocalContext.current
+        val coroutineScope = rememberCoroutineScope()
+        val reviewManager = remember {
+            ReviewManagerFactory.create(localContext)
+        }
+        LaunchedEffect("") {
+            coroutineScope.launch {
+                val success = launchInAppReview(localContext as Activity, reviewManager)
+                if (success) {
+                    onReviewSuccess()
+                    // Optionally, show a success message or perform other actions
+                } else {
+                    // Handle the failure (e.g., log or show a message)
+                }
+            }
+        }
+    }
+}
+
+suspend fun launchInAppReview(activity: Activity, reviewManager: ReviewManager): Boolean {
+    return try {
+        // Request the ReviewInfo object
+        val request = withContext(Dispatchers.IO) {
+            reviewManager.requestReviewFlow().await()
+        }
+
+        if (request != null) {
+            // Launch the review flow
+            val flow = reviewManager.launchReviewFlow(activity, request).await()
+            // You can handle the result if needed
+            true
+        } else {
+            false
+        }
+    } catch (e: Exception) {
+        // Handle the exception, e.g., log it
+        false
     }
 }

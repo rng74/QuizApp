@@ -19,6 +19,7 @@ uiGraphics = "1.7.5"
 gms = "4.4.2"
 firebaseBom = "33.7.0"
 crashlytics = "3.0.2"
+play-review = "2.0.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,6 +49,7 @@ ui-graphics = { module = "androidx.compose.ui:ui-graphics", version.ref = "uiGra
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+play-review = { group = "com.google.android.play", name = "review-ktx", version.ref = "play-review" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

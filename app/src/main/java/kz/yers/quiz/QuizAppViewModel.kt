@@ -30,6 +30,8 @@ class QuizAppViewModel(
 
     val score = mutableIntStateOf(0)
 
+    var tries = mutableIntStateOf(0)
+
     val isQuizFinished = mutableStateOf(false)
 
     val userAnswer = mutableStateOf<String?>(null)
@@ -56,6 +58,7 @@ class QuizAppViewModel(
     }
 
     fun startQuiz(gameMode: GameMode) {
+        tries.value += 1
         selectedGameMode.value = gameMode
         showMenu.value = false
         loadQuizQuestions(gameMode)

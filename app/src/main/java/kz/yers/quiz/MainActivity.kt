@@ -65,9 +65,16 @@ fun QuizApp(viewModel: QuizAppViewModel) {
             )
         }
         composable("result") {
-            ResultScreen(viewModel.score.intValue, onRestart = {
-                viewModel.resetQuiz()
-            })
+            val tries by viewModel.tries
+            ResultScreen(
+                score = viewModel.score.intValue,
+                needToAskReview = tries == 3,
+                onReviewSuccess = {
+                },
+                onRestart = {
+                    viewModel.resetQuiz()
+                }
+            )
         }
         composable("loading") {
             LoadingScreen()
