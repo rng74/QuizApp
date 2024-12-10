@@ -74,12 +74,8 @@ fun ResultScreen(
         LaunchedEffect("") {
             coroutineScope.launch {
                 val success = launchInAppReview(localContext as Activity, reviewManager)
-                if (success) {
+                if (success)
                     onReviewSuccess()
-                    // Optionally, show a success message or perform other actions
-                } else {
-                    // Handle the failure (e.g., log or show a message)
-                }
             }
         }
     }
@@ -87,21 +83,16 @@ fun ResultScreen(
 
 suspend fun launchInAppReview(activity: Activity, reviewManager: ReviewManager): Boolean {
     return try {
-        // Request the ReviewInfo object
         val request = withContext(Dispatchers.IO) {
             reviewManager.requestReviewFlow().await()
         }
-
         if (request != null) {
-            // Launch the review flow
-            val flow = reviewManager.launchReviewFlow(activity, request).await()
-            // You can handle the result if needed
+            reviewManager.launchReviewFlow(activity, request).await()
             true
         } else {
             false
         }
     } catch (e: Exception) {
-        // Handle the exception, e.g., log it
         false
     }
 }
