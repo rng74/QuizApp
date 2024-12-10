@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kz.yers.quiz.model.AppState
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.ui.composable.screen.GameModeMenuScreen
 import kz.yers.quiz.ui.composable.screen.LoadingScreen
@@ -35,21 +36,18 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun QuizApp(viewModel: QuizAppViewModel) {
     val navController = rememberNavController()
-    val isQuizFinished by viewModel.isQuizFinished
-    val isLoading by viewModel.isLoading
-    val showMenu by viewModel.showMenu
+    val appState by viewModel.appState
     val isPosterEnabled by viewModel.isPosterEnabled
 
-    NavHost(navController = navController, startDestination = "gameModeMenu") {
-        composable("quiz") {
-            val currentQuestionIndex by viewModel.currentQuestionIndex
+    NavHost(navController = navController, startDestination = AppState.Menu.name) {
+        composable(AppState.Quiz.name) {
+            val state = appState as? AppState.Quiz ?: return@composable
             val userAnswer by viewModel.userAnswer
-            val currentQuestion = viewModel.quizQuestions[currentQuestionIndex]
             val timeRemaining by viewModel.timeRemaining
             val score by viewModel.score
 
             QuizScreen(
-                question = currentQuestion,
+                question = state.currentQuestion,
                 userAnswer = userAnswer,
                 timeRemaining = timeRemaining,
                 maxTime = viewModel.maxTimePerQuestion,
@@ -64,11 +62,10 @@ fun QuizApp(viewModel: QuizAppViewModel) {
                 }
             )
         }
-        composable("result") {
-            val tries by viewModel.tries
+        composable(AppState.Result.name) {
             ResultScreen(
                 score = viewModel.score.intValue,
-                needToAskReview = tries == 3,
+                needToAskReview = viewModel.tries == 3,
                 onReviewSuccess = {
                 },
                 onRestart = {
@@ -76,10 +73,10 @@ fun QuizApp(viewModel: QuizAppViewModel) {
                 }
             )
         }
-        composable("loading") {
+        composable(AppState.Loading.name) {
             LoadingScreen()
         }
-        composable("gameModeMenu") {
+        composable(AppState.Menu.name) {
             val highScore by viewModel.highScore
             GameModeMenuScreen(
                 highScore = highScore,
@@ -93,21 +90,29 @@ fun QuizApp(viewModel: QuizAppViewModel) {
         }
     }
 
-    if (showMenu) {
-        navController.navigate("gameModeMenu") {
-            popUpTo("quiz") { inclusive = true }
+    when (appState) {
+        AppState.Loading -> {
+            navController.navigate(AppState.Loading.name) {
+                popUpTo(AppState.Loading.name) { inclusive = true }
+            }
         }
-    } else if (isQuizFinished) {
-        navController.navigate("result") {
-            popUpTo("quiz") { inclusive = true }
+
+        AppState.Menu -> {
+            navController.navigate(AppState.Menu.name) {
+                popUpTo(AppState.Menu.name) { inclusive = true }
+            }
         }
-    } else if (isLoading) {
-        navController.navigate("loading") {
-            popUpTo("quiz") { inclusive = true }
+
+        is AppState.Quiz -> {
+            navController.navigate(AppState.Quiz.name) {
+                popUpTo(AppState.Quiz.name) { inclusive = true }
+            }
         }
-    } else {
-        navController.navigate("quiz") {
-            popUpTo("loading") { inclusive = true }
+
+        AppState.Result -> {
+            navController.navigate(AppState.Result.name) {
+                popUpTo(AppState.Result.name) { inclusive = true }
+            }
         }
     }
 }

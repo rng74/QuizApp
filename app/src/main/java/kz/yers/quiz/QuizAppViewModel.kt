@@ -12,6 +12,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kz.yers.quiz.model.AppState
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.QuizQuestion
 import kz.yers.quiz.repo.AnimeRepository
@@ -20,19 +21,16 @@ class QuizAppViewModel(
     private val repository: AnimeRepository
 ) : ViewModel() {
 
-    var quizQuestions: List<QuizQuestion> = emptyList()
-        private set
+    var appState = mutableStateOf<AppState>(AppState.Menu)
 
-    val currentQuestionIndex = mutableIntStateOf(0)
+    private var quizQuestions: List<QuizQuestion> = emptyList()
 
     private val _highScore = mutableIntStateOf(0)
     val highScore: State<Int> = _highScore
 
     val score = mutableIntStateOf(0)
 
-    var tries = mutableIntStateOf(0)
-
-    val isQuizFinished = mutableStateOf(false)
+    var tries = 0
 
     val userAnswer = mutableStateOf<String?>(null)
 
@@ -44,12 +42,6 @@ class QuizAppViewModel(
 
     private var isTimerRunning = mutableStateOf(false)
 
-    val isLoading = mutableStateOf(false)
-
-    val showMenu = mutableStateOf(true)
-
-    private var selectedGameMode = mutableStateOf(GameMode.EASY)
-
     private val _isPosterEnabled = mutableStateOf(true)
     val isPosterEnabled: State<Boolean> = _isPosterEnabled
 
@@ -58,15 +50,13 @@ class QuizAppViewModel(
     }
 
     fun startQuiz(gameMode: GameMode) {
-        tries.value += 1
-        selectedGameMode.value = gameMode
-        showMenu.value = false
+        tries += 1
         loadQuizQuestions(gameMode)
     }
 
     private fun loadQuizQuestions(gameMode: GameMode) {
+        appState.value = AppState.Loading
         viewModelScope.launch {
-            isLoading.value = true
             withContext(Dispatchers.IO) {
                 quizQuestions = when (gameMode) {
                     GameMode.EASY -> {
@@ -86,7 +76,10 @@ class QuizAppViewModel(
                     }
                 }
             }
-            isLoading.value = false
+            appState.value = AppState.Quiz(
+                currentQuestion = quizQuestions[0],
+                currentQuestionIndex = 0
+            )
         }
     }
 
@@ -116,7 +109,7 @@ class QuizAppViewModel(
 
     private fun onTimeUp() {
         userAnswer.value = null
-        isQuizFinished.value = true
+        appState.value = AppState.Result
     }
 
     fun setPosterEnabled(enabled: Boolean) {
@@ -126,31 +119,40 @@ class QuizAppViewModel(
     fun submitAnswer(selectedAnswer: String) {
         stopTimer()
         userAnswer.value = selectedAnswer
-        val currentQuestion = quizQuestions[currentQuestionIndex.intValue]
-        if (selectedAnswer == currentQuestion.correctAnswer.titleRu) {
+        val state = appState.value
+        if (state !is AppState.Quiz) {
+            appState.value = AppState.Menu
+            return
+        }
+        if (selectedAnswer == state.currentQuestion.correctAnswer.titleRu) {
             val points = (timeRemaining.longValue / 1000L).toInt()
             score.intValue += points
         }
     }
 
     fun moveToNextQuestion() {
-        val currentQuestion = quizQuestions[currentQuestionIndex.intValue]
-        if (userAnswer.value != currentQuestion.correctAnswer.titleRu) {
-            isQuizFinished.value = true
-        } else if (currentQuestionIndex.intValue < quizQuestions.size - 1) {
-            currentQuestionIndex.intValue += 1
+        val state = appState.value
+        if (state !is AppState.Quiz) {
+            appState.value = AppState.Menu
+            return
+        }
+        if (userAnswer.value != state.currentQuestion.correctAnswer.titleRu) {
+            appState.value = AppState.Result
+        } else if (state.currentQuestionIndex < quizQuestions.size - 1) {
+            appState.value = AppState.Quiz(
+                currentQuestion = quizQuestions[state.currentQuestionIndex + 1],
+                currentQuestionIndex = state.currentQuestionIndex + 1
+            )
             userAnswer.value = null
         } else {
-            isQuizFinished.value = true
+            appState.value = AppState.Result
         }
     }
 
     fun resetQuiz() {
         repository.setHighScore(score.intValue)
         _highScore.intValue = repository.getHighScore()
-        showMenu.value = true
-        currentQuestionIndex.intValue = 0
-        isQuizFinished.value = false
+        appState.value = AppState.Menu
         userAnswer.value = null
         score.intValue = 0
     }
