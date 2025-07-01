@@ -52,7 +52,7 @@ fun QuizScreen(
     isPosterEnabled: Boolean,
     onAnswerSelected: (String) -> Unit,
     onNextQuestion: () -> Unit,
-    onPlaybackReady: () -> Unit
+    onPlaybackReady: () -> Unit,
 ) {
     val progress by remember(timeRemaining) {
         mutableFloatStateOf(timeRemaining / maxTime.toFloat())
@@ -69,58 +69,63 @@ fun QuizScreen(
             // Animate scale up
             scale.animateTo(
                 targetValue = 1.5f,
-                animationSpec = tween(durationMillis = 300)
+                animationSpec = tween(durationMillis = 300),
             )
             // Animate scale back to normal
             scale.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 300)
+                animationSpec = tween(durationMillis = 300),
             )
             previousScore = score
         }
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.score, score),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .align(Alignment.End)
-                .scale(scale.value)
+            modifier =
+                Modifier
+                    .align(Alignment.End)
+                    .scale(scale.value),
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(250.dp),
         ) {
             if (isPosterEnabled) {
                 BlurredImage(
                     url = BASE_URL + question.correctAnswer.posterLink,
                     isBlurred = userAnswer == null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(MaterialTheme.shapes.medium)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.medium),
                 )
             }
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                            startY = 0f,
-                            endY = with(density) { imageHeight.toPx() }
-                        )
-                    )
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                                startY = 0f,
+                                endY = with(density) { imageHeight.toPx() },
+                            ),
+                        ),
             )
             LinearProgressIndicator(
                 progress = {
@@ -128,10 +133,11 @@ fun QuizScreen(
                 },
                 color = MaterialTheme.colorScheme.secondary,
                 strokeCap = StrokeCap.Butt,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .align(Alignment.TopCenter)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .align(Alignment.TopCenter),
             )
         }
 
@@ -141,9 +147,10 @@ fun QuizScreen(
             url = BASE_URL + question.correctAnswer.songLink,
             onPlaybackReady = {
                 onPlaybackReady()
-            }, onPlaybackEnded = {
+            },
+            onPlaybackEnded = {
                 onNextQuestion()
-            }
+            },
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -153,21 +160,25 @@ fun QuizScreen(
             val isSelected = userAnswer != null && userAnswer == option
             OutlinedButton(
                 onClick = { onAnswerSelected(option) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
                 enabled = userAnswer == null,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
+                colors =
+                    ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary,
+                    ),
                 shape = MaterialTheme.shapes.medium,
-                border = BorderStroke(
-                    1.dp, when {
-                        isCorrect -> Green700
-                        isSelected -> Red700
-                        else -> MaterialTheme.colorScheme.primary
-                    }
-                )
+                border =
+                    BorderStroke(
+                        1.dp,
+                        when {
+                            isCorrect -> Green700
+                            isSelected -> Red700
+                            else -> MaterialTheme.colorScheme.primary
+                        },
+                    ),
             ) {
                 Text(text = option, style = MaterialTheme.typography.bodyLarge)
             }
@@ -184,17 +195,18 @@ fun QuizScreen(
                 text = feedbackText,
                 color = feedbackColor,
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = onNextQuestion,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = MaterialTheme.shapes.medium
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                shape = MaterialTheme.shapes.medium,
             ) {
                 val text =
                     if (isCorrect) stringResource(R.string.next_question) else stringResource(R.string.check_results)

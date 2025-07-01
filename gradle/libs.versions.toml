@@ -1,25 +1,26 @@
 [versions]
-agp = "8.7.3"
-coilCompose = "2.2.2"
-koinAndroid = "3.4.0"
-koinAndroidxCompose = "3.4.4"
-kotlin = "1.9.0"
-coreKtx = "1.15.0"
+agp = "8.11.0"
+coilCompose = "2.7.0"
+koinAndroid = "4.1.0"
+koinAndroidxCompose = "4.1.0"
+kotlin = "2.2.0"
+coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.8.7"
-activityCompose = "1.9.3"
-composeBom = "2024.11.00"
-gson = "2.10.1"
-materialIconsExtended = "1.7.5"
-media3Ui = "1.5.0"
-navigationCompose = "2.8.4"
-uiGraphics = "1.7.5"
-gms = "4.4.2"
-firebaseBom = "33.7.0"
-crashlytics = "3.0.2"
+lifecycleRuntimeKtx = "2.9.1"
+activityCompose = "1.10.1"
+composeBom = "2025.06.01"
+gson = "2.13.1"
+materialIconsExtended = "1.7.8"
+media3Ui = "1.7.1"
+navigationCompose = "2.9.0"
+uiGraphics = "1.8.3"
+gms = "4.4.3"
+firebaseBom = "33.16.0"
+crashlytics = "3.0.4"
 play-review = "2.0.2"
+ktlint = "12.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -56,4 +57,6 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "gms" }
 crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlytics" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 

@@ -1,16 +1,16 @@
 package kz.yers.quiz.model
 
-sealed class AppState(val name: String) {
-
+sealed class AppState(
+    val name: String,
+) {
     data object Menu : AppState("menu")
 
     data class Quiz(
         val currentQuestion: QuizQuestion,
-        val currentQuestionIndex: Int
-    ) : AppState("quiz") {
-
+        val currentQuestionIndex: Int,
+    ) : AppState(NAME) {
         companion object {
-            const val name = "quiz"
+            const val NAME = "quiz"
         }
     }
 

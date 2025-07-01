@@ -14,17 +14,18 @@ import coil.request.ImageRequest
 fun BlurredImage(
     url: String,
     isBlurred: Boolean,
-    modifier: Modifier
+    modifier: Modifier,
 ) {
     val context = LocalContext.current
     val blurRadius by animateDpAsState(targetValue = if (isBlurred) 16.dp else 0.dp, label = "")
 
     AsyncImage(
-        model = ImageRequest.Builder(context)
-            .data(url)
-            .crossfade(true)
-            .build(),
+        model =
+            ImageRequest.Builder(context)
+                .data(url)
+                .crossfade(true)
+                .build(),
         contentDescription = null,
-        modifier = modifier.blur(blurRadius)
+        modifier = modifier.blur(blurRadius),
     )
 }

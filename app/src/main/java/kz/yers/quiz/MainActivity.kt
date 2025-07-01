@@ -19,7 +19,6 @@ import kz.yers.quiz.ui.theme.QuizAppTheme
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : ComponentActivity() {
-
     private val viewModel: QuizAppViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,7 +39,7 @@ fun QuizApp(viewModel: QuizAppViewModel) {
     val isPosterEnabled by viewModel.isPosterEnabled
 
     NavHost(navController = navController, startDestination = AppState.Menu.name) {
-        composable(AppState.Quiz.name) {
+        composable(AppState.Quiz.NAME) {
             val state = appState as? AppState.Quiz ?: return@composable
             val userAnswer by viewModel.userAnswer
             val timeRemaining by viewModel.timeRemaining
@@ -55,11 +54,13 @@ fun QuizApp(viewModel: QuizAppViewModel) {
                 isPosterEnabled = isPosterEnabled,
                 onAnswerSelected = { selectedAnswer ->
                     viewModel.submitAnswer(selectedAnswer)
-                }, onNextQuestion = {
+                },
+                onNextQuestion = {
                     viewModel.moveToNextQuestion()
-                }, onPlaybackReady = {
+                },
+                onPlaybackReady = {
                     viewModel.startTimer()
-                }
+                },
             )
         }
         composable(AppState.Result.name) {
@@ -70,7 +71,7 @@ fun QuizApp(viewModel: QuizAppViewModel) {
                 },
                 onRestart = {
                     viewModel.resetQuiz()
-                }
+                },
             )
         }
         composable(AppState.Loading.name) {
@@ -83,9 +84,10 @@ fun QuizApp(viewModel: QuizAppViewModel) {
                 isPosterEnabled = isPosterEnabled,
                 onPosterToggle = { enabled ->
                     viewModel.setPosterEnabled(enabled)
-                }, onGameModeSelected = { gameMode: GameMode ->
+                },
+                onGameModeSelected = { gameMode: GameMode ->
                     viewModel.startQuiz(gameMode)
-                }
+                },
             )
         }
     }
@@ -104,8 +106,8 @@ fun QuizApp(viewModel: QuizAppViewModel) {
         }
 
         is AppState.Quiz -> {
-            navController.navigate(AppState.Quiz.name) {
-                popUpTo(AppState.Quiz.name) { inclusive = true }
+            navController.navigate(AppState.Quiz.NAME) {
+                popUpTo(AppState.Quiz.NAME) { inclusive = true }
             }
         }
 

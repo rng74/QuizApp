@@ -40,7 +40,7 @@ import kz.yers.quiz.R
 fun OptionToggle(
     options: List<String>,
     selectedOption: String,
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (String) -> Unit,
 ) {
     val withPosterStr = stringResource(R.string.with_poster)
 
@@ -51,62 +51,67 @@ fun OptionToggle(
     val density = LocalDensity.current
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .padding(horizontal = 8.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 8.dp)
+                .clip(RoundedCornerShape(28.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         // Animated Indicator
         Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(indicatorWidth.value)
-                .offset(x = indicatorOffset)
-                .background(MaterialTheme.colorScheme.primary, RectangleShape)
-                .animateContentSize()
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .width(indicatorWidth.value)
+                    .offset(x = indicatorOffset)
+                    .background(MaterialTheme.colorScheme.primary, RectangleShape)
+                    .animateContentSize(),
         )
 
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .onGloballyPositioned { layoutCoordinates ->
-                    val widthInPx = layoutCoordinates.size.width.toFloat() / optionCount
-                    val widthInDp = with(density) { widthInPx.toDp() }
-                    indicatorWidth.value = widthInDp
-                },
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { layoutCoordinates ->
+                        val widthInPx = layoutCoordinates.size.width.toFloat() / optionCount
+                        val widthInDp = with(density) { widthInPx.toDp() }
+                        indicatorWidth.value = widthInDp
+                    },
             horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             options.forEach { option ->
                 val isSelected = option == selectedOption
-                val contentColor = if (isSelected) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                val contentColor =
+                    if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 val icon =
                     if (option == withPosterStr) Icons.Default.Image else Icons.Default.ImageNotSupported
 
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable { onOptionSelected(option) },
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { onOptionSelected(option) },
                     horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = option,
-                        tint = contentColor
+                        tint = contentColor,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = option,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = contentColor
+                        color = contentColor,
                     )
                 }
             }

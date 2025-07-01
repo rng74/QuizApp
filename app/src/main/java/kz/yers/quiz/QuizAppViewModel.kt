@@ -18,9 +18,8 @@ import kz.yers.quiz.model.QuizQuestion
 import kz.yers.quiz.repo.AnimeRepository
 
 class QuizAppViewModel(
-    private val repository: AnimeRepository
+    private val repository: AnimeRepository,
 ) : ViewModel() {
-
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
     private var quizQuestions: List<QuizQuestion> = emptyList()
@@ -58,28 +57,30 @@ class QuizAppViewModel(
         appState.value = AppState.Loading
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                quizQuestions = when (gameMode) {
-                    GameMode.EASY -> {
-                        repository.getRandomizedQuestionsGt(30, 8.3f)
-                    }
+                quizQuestions =
+                    when (gameMode) {
+                        GameMode.EASY -> {
+                            repository.getRandomizedQuestionsGt(30, 8.3f)
+                        }
 
-                    GameMode.NORMAL -> {
-                        repository.getRandomizedQuestionsGt(30, 7.5f)
-                    }
+                        GameMode.NORMAL -> {
+                            repository.getRandomizedQuestionsGt(30, 7.5f)
+                        }
 
-                    GameMode.RANDOM -> {
-                        repository.getRandomizedQuestions(30)
-                    }
+                        GameMode.RANDOM -> {
+                            repository.getRandomizedQuestions(30)
+                        }
 
-                    GameMode.SHIT -> {
-                        repository.getRandomizedQuestionsLte(30, 6f)
+                        GameMode.SHIT -> {
+                            repository.getRandomizedQuestionsLte(30, 6f)
+                        }
                     }
-                }
             }
-            appState.value = AppState.Quiz(
-                currentQuestion = quizQuestions[0],
-                currentQuestionIndex = 0
-            )
+            appState.value =
+                AppState.Quiz(
+                    currentQuestion = quizQuestions[0],
+                    currentQuestionIndex = 0,
+                )
         }
     }
 
@@ -91,15 +92,16 @@ class QuizAppViewModel(
 
         val startTime = SystemClock.elapsedRealtime()
 
-        timerJob = viewModelScope.launch {
-            while (timeRemaining.longValue > 0L) {
-                val elapsed = SystemClock.elapsedRealtime() - startTime
-                timeRemaining.longValue = (maxTimePerQuestion - elapsed).coerceAtLeast(0L)
-                delay(16L)
+        timerJob =
+            viewModelScope.launch {
+                while (timeRemaining.longValue > 0L) {
+                    val elapsed = SystemClock.elapsedRealtime() - startTime
+                    timeRemaining.longValue = (maxTimePerQuestion - elapsed).coerceAtLeast(0L)
+                    delay(16L)
+                }
+                isTimerRunning.value = false
+                onTimeUp()
             }
-            isTimerRunning.value = false
-            onTimeUp()
-        }
     }
 
     private fun stopTimer() {
@@ -139,10 +141,11 @@ class QuizAppViewModel(
         if (userAnswer.value != state.currentQuestion.correctAnswer.titleRu) {
             appState.value = AppState.Result
         } else if (state.currentQuestionIndex < quizQuestions.size - 1) {
-            appState.value = AppState.Quiz(
-                currentQuestion = quizQuestions[state.currentQuestionIndex + 1],
-                currentQuestionIndex = state.currentQuestionIndex + 1
-            )
+            appState.value =
+                AppState.Quiz(
+                    currentQuestion = quizQuestions[state.currentQuestionIndex + 1],
+                    currentQuestionIndex = state.currentQuestionIndex + 1,
+                )
             userAnswer.value = null
         } else {
             appState.value = AppState.Result

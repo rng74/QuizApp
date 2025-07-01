@@ -34,33 +34,35 @@ fun ResultScreen(
     score: Int,
     needToAskReview: Boolean,
     onReviewSuccess: () -> Unit,
-    onRestart: () -> Unit
+    onRestart: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = stringResource(R.string.quiz_finished),
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.your_score, score),
             style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.secondary
+            color = MaterialTheme.colorScheme.secondary,
         )
         Spacer(modifier = Modifier.height(48.dp))
         Button(
             onClick = onRestart,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = MaterialTheme.shapes.medium
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+            shape = MaterialTheme.shapes.medium,
         ) {
             Text(text = stringResource(R.string.play_again), color = Color.White)
         }
@@ -68,24 +70,30 @@ fun ResultScreen(
     if (needToAskReview) {
         val localContext = LocalContext.current
         val coroutineScope = rememberCoroutineScope()
-        val reviewManager = remember {
-            ReviewManagerFactory.create(localContext)
-        }
+        val reviewManager =
+            remember {
+                ReviewManagerFactory.create(localContext)
+            }
         LaunchedEffect("") {
             coroutineScope.launch {
                 val success = launchInAppReview(localContext as Activity, reviewManager)
-                if (success)
+                if (success) {
                     onReviewSuccess()
+                }
             }
         }
     }
 }
 
-suspend fun launchInAppReview(activity: Activity, reviewManager: ReviewManager): Boolean {
+suspend fun launchInAppReview(
+    activity: Activity,
+    reviewManager: ReviewManager,
+): Boolean {
     return try {
-        val request = withContext(Dispatchers.IO) {
-            reviewManager.requestReviewFlow().await()
-        }
+        val request =
+            withContext(Dispatchers.IO) {
+                reviewManager.requestReviewFlow().await()
+            }
         if (request != null) {
             reviewManager.launchReviewFlow(activity, request).await()
             true

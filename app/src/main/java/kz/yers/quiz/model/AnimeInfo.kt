@@ -16,5 +16,5 @@ data class AnimeInfo(
     @SerializedName("poster_link")
     val posterLink: String = "",
     @SerializedName("rating")
-    val rating: Float = 0.0f
+    val rating: Float = 0.0f,
 )
