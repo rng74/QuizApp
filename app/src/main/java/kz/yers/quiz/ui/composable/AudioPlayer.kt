@@ -15,6 +15,7 @@ import androidx.media3.exoplayer.ExoPlayer
 @Composable
 fun AudioPlayer(
     url: String,
+    needPlay: Boolean,
     onPlaybackReady: () -> Unit,
     onPlaybackEnded: () -> Unit,
 ) {
@@ -29,6 +30,9 @@ fun AudioPlayer(
                 repeatMode = ExoPlayer.REPEAT_MODE_OFF
             }
         }
+    if (!needPlay) {
+        exoPlayer.stop()
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(url) {
         val lifecycle = lifecycleOwner.lifecycle

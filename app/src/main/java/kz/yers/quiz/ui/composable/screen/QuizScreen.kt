@@ -1,16 +1,21 @@
 package kz.yers.quiz.ui.composable.screen
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -33,7 +38,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import kz.yers.quiz.BASE_URL
 import kz.yers.quiz.R
 import kz.yers.quiz.model.QuizQuestion
@@ -41,6 +52,15 @@ import kz.yers.quiz.ui.composable.AudioPlayer
 import kz.yers.quiz.ui.composable.BlurredImage
 import kz.yers.quiz.ui.theme.Green700
 import kz.yers.quiz.ui.theme.Red700
+import kz.yers.quiz.utils.SoundManager
+import nl.dionsegijn.konfetti.compose.KonfettiView
+import nl.dionsegijn.konfetti.compose.OnParticleSystemUpdateListener
+import nl.dionsegijn.konfetti.core.Party
+import nl.dionsegijn.konfetti.core.PartySystem
+import nl.dionsegijn.konfetti.core.Position
+import nl.dionsegijn.konfetti.core.emitter.Emitter
+import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 @Composable
 fun QuizScreen(
@@ -49,6 +69,8 @@ fun QuizScreen(
     timeRemaining: Long,
     maxTime: Long,
     score: Int,
+    streak: Int,
+    shouldShake: Boolean,
     isPosterEnabled: Boolean,
     onAnswerSelected: (String) -> Unit,
     onNextQuestion: () -> Unit,
@@ -64,6 +86,36 @@ fun QuizScreen(
     val density = LocalDensity.current
     val imageHeight = 250.dp
 
+    val shakeAnim = remember { Animatable(0f) }
+
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.flame_animation))
+    val lottieProgress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = LottieConstants.IterateForever,
+        isPlaying = true,
+    )
+
+    LaunchedEffect(userAnswer) {
+        if (userAnswer == question.correctAnswer.titleRu) {
+            SoundManager.playCorrectAnswer()
+        } else if (userAnswer != null) {
+            shakeAnim.snapTo(0f)
+            shakeAnim.animateTo(
+                targetValue = 0f,
+                animationSpec =
+                    keyframes {
+                        durationMillis = 300
+                        -16f at 0
+                        16f at 50
+                        -12f at 100
+                        12f at 150
+                        -6f at 200
+                        6f at 250
+                        0f at 300
+                    },
+            )
+        }
+    }
     LaunchedEffect(score) {
         if (score > previousScore) {
             // Animate scale up
@@ -79,138 +131,186 @@ fun QuizScreen(
             previousScore = score
         }
     }
-
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.score, score),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.primary,
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (userAnswer == question.correctAnswer.titleRu) {
+            KonfettiView(
+                modifier = Modifier.fillMaxSize(),
+                parties =
+                    listOf(
+                        Party(
+                            speed = 0f,
+                            maxSpeed = 30f,
+                            damping = 0.9f,
+                            spread = 360,
+                            colors = listOf(0xfce18a, 0xff726d, 0xf4306d, 0xb48def),
+                            emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
+                            position = Position.Relative(0.5, 0.3),
+                        ),
+                    ),
+                updateListener =
+                    object : OnParticleSystemUpdateListener {
+                        override fun onParticleSystemEnded(
+                            system: PartySystem,
+                            activeSystems: Int,
+                        ) {
+                        }
+                    },
+            )
+        }
+        Column(
             modifier =
                 Modifier
-                    .align(Alignment.End)
-                    .scale(scale.value),
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(250.dp),
+                    .fillMaxSize()
+                    .padding(16.dp),
         ) {
-            if (isPosterEnabled) {
-                BlurredImage(
-                    url = BASE_URL + question.correctAnswer.posterLink,
-                    isBlurred = userAnswer == null,
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = stringResource(R.string.score, score),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier =
                         Modifier
-                            .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.medium),
+                            .scale(scale.value)
+                            .align(Alignment.Bottom),
                 )
+                if (streak > 5) {
+                    Spacer(Modifier.width(4.dp))
+                    LottieAnimation(
+                        composition = composition,
+                        progress = { lottieProgress },
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Box(
                 modifier =
                     Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                                startY = 0f,
-                                endY = with(density) { imageHeight.toPx() },
-                            ),
-                        ),
-            )
-            LinearProgressIndicator(
-                progress = {
-                    progress.coerceIn(0f, 1f)
-                },
-                color = MaterialTheme.colorScheme.secondary,
-                strokeCap = StrokeCap.Butt,
-                modifier =
-                    Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
-                        .align(Alignment.TopCenter),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        AudioPlayer(
-            url = BASE_URL + question.correctAnswer.songLink,
-            onPlaybackReady = {
-                onPlaybackReady()
-            },
-            onPlaybackEnded = {
-                onNextQuestion()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        question.options.forEach { option ->
-            val isCorrect = userAnswer != null && option == question.correctAnswer.titleRu
-            val isSelected = userAnswer != null && userAnswer == option
-            OutlinedButton(
-                onClick = { onAnswerSelected(option) },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                enabled = userAnswer == null,
-                colors =
-                    ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                border =
-                    BorderStroke(
-                        1.dp,
-                        when {
-                            isCorrect -> Green700
-                            isSelected -> Red700
-                            else -> MaterialTheme.colorScheme.primary
-                        },
-                    ),
+                        .height(250.dp),
             ) {
-                Text(text = option, style = MaterialTheme.typography.bodyLarge)
+                if (isPosterEnabled) {
+                    BlurredImage(
+                        url = BASE_URL + question.correctAnswer.posterLink,
+                        isBlurred = userAnswer == null,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.medium),
+                    )
+                }
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                                    startY = 0f,
+                                    endY = with(density) { imageHeight.toPx() },
+                                ),
+                            ),
+                )
+                LinearProgressIndicator(
+                    progress = {
+                        progress.coerceIn(0f, 1f)
+                    },
+                    color = Color.Blue,
+                    strokeCap = StrokeCap.Butt,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .align(Alignment.TopCenter),
+                )
             }
-        }
 
-        if (userAnswer != null) {
-            Spacer(modifier = Modifier.height(32.dp))
-            val isCorrect = userAnswer == question.correctAnswer.titleRu
-            val feedbackText =
-                if (isCorrect) stringResource(R.string.correct) else stringResource(R.string.incorrect)
-            val feedbackColor = if (isCorrect) Green700 else Red700
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = feedbackText,
-                color = feedbackColor,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
+            AudioPlayer(
+                url = BASE_URL + question.correctAnswer.songLink,
+                needPlay = userAnswer == null,
+                onPlaybackReady = {
+                    onPlaybackReady()
+                },
+                onPlaybackEnded = {
+                    onNextQuestion()
+                },
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = onNextQuestion,
-                modifier =
+            question.options.forEach { option ->
+                val isCorrect = userAnswer != null && option == question.correctAnswer.titleRu
+                val isSelected = userAnswer != null && userAnswer == option
+                val modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                shape = MaterialTheme.shapes.medium,
-            ) {
-                val text =
-                    if (isCorrect) stringResource(R.string.next_question) else stringResource(R.string.check_results)
-                Text(text = text, color = Color.White)
+                        .padding(vertical = 8.dp)
+                        .let {
+                            if (isSelected) {
+                                it.offset { IntOffset(shakeAnim.value.roundToInt(), 0) }
+                            } else {
+                                it
+                            }
+                        }
+                OutlinedButton(
+                    onClick = { onAnswerSelected(option) },
+                    modifier = modifier,
+                    enabled = userAnswer == null,
+                    colors =
+                        ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    shape = MaterialTheme.shapes.medium,
+                    border =
+                        BorderStroke(
+                            1.dp,
+                            when {
+                                isCorrect -> Green700
+                                isSelected -> Red700
+                                else -> MaterialTheme.colorScheme.primary
+                            },
+                        ),
+                ) {
+                    Text(text = option, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+
+            if (userAnswer != null) {
+                Spacer(modifier = Modifier.height(32.dp))
+                val isCorrect = userAnswer == question.correctAnswer.titleRu
+                val feedbackText =
+                    if (isCorrect) stringResource(R.string.correct) else stringResource(R.string.incorrect)
+                val feedbackColor = if (isCorrect) Green700 else Red700
+                Text(
+                    text = feedbackText,
+                    color = feedbackColor,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onNextQuestion,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                    shape = MaterialTheme.shapes.medium,
+                ) {
+                    val text =
+                        if (isCorrect) stringResource(R.string.next_question) else stringResource(R.string.check_results)
+                    Text(text = text, color = Color.White)
+                }
             }
         }
     }

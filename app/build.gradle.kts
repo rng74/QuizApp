@@ -9,14 +9,14 @@ plugins {
 
 android {
     namespace = "kz.yers.quiz"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "kz.yers.quiz"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 3
-        versionName = "3.0"
+        targetSdk = 36
+        versionCode = 4
+        versionName = "4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -76,6 +76,8 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
     implementation(libs.play.review)
+    implementation(libs.konfetti)
+    implementation(libs.lottie)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

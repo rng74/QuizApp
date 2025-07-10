@@ -88,8 +88,8 @@ fun ResultScreen(
 suspend fun launchInAppReview(
     activity: Activity,
     reviewManager: ReviewManager,
-): Boolean {
-    return try {
+): Boolean =
+    try {
         val request =
             withContext(Dispatchers.IO) {
                 reviewManager.requestReviewFlow().await()
@@ -103,4 +103,3 @@ suspend fun launchInAppReview(
     } catch (e: Exception) {
         false
     }
-}
