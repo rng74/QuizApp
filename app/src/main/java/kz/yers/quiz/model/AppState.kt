@@ -21,4 +21,6 @@ sealed class AppState(
     data object Daily : AppState("daily")
 
     data object Profile : AppState("profile")
+
+    data object Settings : AppState("settings")
 }

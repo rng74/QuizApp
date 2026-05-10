@@ -27,14 +27,18 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kz.yers.quiz.R
 import kz.yers.quiz.model.GameMode
-import kz.yers.quiz.ui.composable.OptionToggle
 import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.theme.BangersFamily
@@ -44,22 +48,31 @@ import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
 
+/**
+ * Single-character badge / glyph style that disables the platform's extra font padding so the
+ * glyph sits visually centered inside circular badges. Apply to Bangers/Russo One characters
+ * sitting alone in a 40–56dp disc.
+ */
+private val BadgeGlyphStyle =
+    TextStyle(
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+        lineHeightStyle =
+            LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.Both,
+            ),
+    )
+
 @Composable
 fun GameModeMenuScreen(
     highScore: Int,
     onGameModeSelected: (GameMode) -> Unit,
-    isPosterEnabled: Boolean,
-    onPosterToggle: (Boolean) -> Unit,
     onOpenDaily: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
-    val withPosterStr = stringResource(R.string.with_poster)
-    val withoutPosterStr = stringResource(R.string.without_poster)
     val highScoreStr = stringResource(R.string.your_high_score_is, highScore)
     val selectGameModeStr = stringResource(R.string.select_game_mode)
-
-    val options = listOf(withPosterStr, withoutPosterStr)
-    val selectedOption = if (isPosterEnabled) withPosterStr else withoutPosterStr
 
     Column(
         modifier =
@@ -73,9 +86,11 @@ fun GameModeMenuScreen(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Spacer(Modifier.weight(1f))
-            ProfileIconButton(onClick = onOpenProfile)
+            MenuIconButton(label = "ПРО", onClick = onOpenProfile)
+            MenuIconButton(label = "⚙", onClick = onOpenSettings, fontSize = 18.sp)
         }
         Spacer(Modifier.height(8.dp))
         ImpactText(
@@ -89,6 +104,7 @@ fun GameModeMenuScreen(
             fontFamily = RussoOneFamily,
             fontSize = 13.sp,
             letterSpacing = 1.sp,
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(20.dp))
 
@@ -119,6 +135,7 @@ fun GameModeMenuScreen(
                         fontFamily = BangersFamily,
                         fontSize = 36.sp,
                         color = QuizColors.accentBlue,
+                        style = BadgeGlyphStyle,
                     )
                 }
                 Box(
@@ -132,8 +149,10 @@ fun GameModeMenuScreen(
                 ) {
                     Text(
                         text = "★",
-                        fontSize = 28.sp,
+                        fontSize = 26.sp,
                         color = Color.White,
+                        textAlign = TextAlign.Center,
+                        style = BadgeGlyphStyle,
                     )
                 }
             }
@@ -149,16 +168,6 @@ fun GameModeMenuScreen(
             color = QuizColors.ink,
         )
         Spacer(Modifier.height(12.dp))
-
-        OptionToggle(
-            options = options,
-            selectedOption = selectedOption,
-            onOptionSelected = { selected ->
-                onPosterToggle(selected == withPosterStr)
-            },
-        )
-
-        Spacer(Modifier.height(20.dp))
 
         // 2×2 mode card grid.
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -226,6 +235,8 @@ private fun ModeCard(
                     fontFamily = BangersFamily,
                     fontSize = 22.sp,
                     color = Color.White,
+                    textAlign = TextAlign.Center,
+                    style = BadgeGlyphStyle,
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -248,7 +259,11 @@ private fun ModeCard(
 }
 
 @Composable
-private fun ProfileIconButton(onClick: () -> Unit) {
+private fun MenuIconButton(
+    label: String,
+    onClick: () -> Unit,
+    fontSize: androidx.compose.ui.unit.TextUnit = 11.sp,
+) {
     val shape = RoundedCornerShape(QuizRadii.button)
     Box(
         modifier =
@@ -261,11 +276,13 @@ private fun ProfileIconButton(onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "ПРО",
+            text = label,
             fontFamily = RussoOneFamily,
-            fontSize = 11.sp,
+            fontSize = fontSize,
             letterSpacing = 1.sp,
             color = QuizColors.ink,
+            textAlign = TextAlign.Center,
+            style = BadgeGlyphStyle,
         )
     }
 }
@@ -290,7 +307,7 @@ private fun DailyEntryCard(onClick: () -> Unit) {
                 }
                 .clip(shape)
                 .background(
-                    androidx.compose.ui.graphics.Brush.linearGradient(
+                    Brush.linearGradient(
                         colors = listOf(Color(0xFFFFD35B), QuizColors.tint),
                     ),
                 )
@@ -306,7 +323,9 @@ private fun DailyEntryCard(onClick: () -> Unit) {
                     fontSize = 22.sp,
                     color = QuizColors.ink,
                     letterSpacing = 1.sp,
+                    style = BadgeGlyphStyle,
                 )
+                Spacer(Modifier.height(2.dp))
                 Text(
                     text = "Один трек на всех · 2× очки",
                     fontSize = 12.sp,
@@ -319,6 +338,7 @@ private fun DailyEntryCard(onClick: () -> Unit) {
                 fontFamily = BangersFamily,
                 fontSize = 28.sp,
                 color = QuizColors.ink,
+                style = BadgeGlyphStyle,
             )
         }
     }

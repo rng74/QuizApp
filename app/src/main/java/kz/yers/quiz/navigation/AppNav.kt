@@ -18,6 +18,8 @@ import kz.yers.quiz.ui.composable.screen.OnboardingScreen
 import kz.yers.quiz.ui.composable.screen.ProfileScreen
 import kz.yers.quiz.ui.composable.screen.QuizScreen
 import kz.yers.quiz.ui.composable.screen.ResultScreen
+import kz.yers.quiz.ui.composable.screen.SettingsActions
+import kz.yers.quiz.ui.composable.screen.SettingsScreen
 
 @Composable
 fun AppNavHost(
@@ -41,6 +43,7 @@ fun AppNavHost(
                         AppState.Result -> Routes.RESULT
                         AppState.Daily -> Routes.DAILY
                         AppState.Profile -> Routes.PROFILE
+                        AppState.Settings -> Routes.SETTINGS
                     }
             }
         if (navController.currentDestination?.route != target) {
@@ -61,14 +64,12 @@ fun AppNavHost(
         }
         composable(Routes.MENU) {
             val highScore by viewModel.highScore
-            val isPosterEnabled by viewModel.isPosterEnabled
             GameModeMenuScreen(
                 highScore = highScore,
-                isPosterEnabled = isPosterEnabled,
-                onPosterToggle = viewModel::setPosterEnabled,
                 onGameModeSelected = viewModel::startQuiz,
                 onOpenDaily = viewModel::openDaily,
                 onOpenProfile = viewModel::openProfile,
+                onOpenSettings = viewModel::openSettings,
             )
         }
         composable(Routes.LOADING) {
@@ -117,6 +118,28 @@ fun AppNavHost(
             ProfileScreen(
                 state = state,
                 onBack = viewModel::backToMenu,
+            )
+        }
+        composable(Routes.SETTINGS) {
+            val a11y by viewModel.a11y
+            val isPosterEnabled by viewModel.isPosterEnabled
+            val soundEnabled by viewModel.soundEnabled
+            SettingsScreen(
+                isPosterEnabled = isPosterEnabled,
+                soundEnabled = soundEnabled,
+                a11y = a11y,
+                actions =
+                    SettingsActions(
+                        onBack = viewModel::backToMenu,
+                        onPosterToggle = viewModel::setPosterEnabled,
+                        onSoundToggle = viewModel::setSoundEnabled,
+                        onReduceMotionToggle = viewModel::setReduceMotion,
+                        onColorBlindToggle = viewModel::setColorBlindSafe,
+                        onLargerTextToggle = viewModel::setLargerText,
+                        onDyslexiaToggle = viewModel::setDyslexiaFont,
+                        onReplayTutorial = viewModel::replayTutorial,
+                        onResetHighScore = viewModel::resetHighScore,
+                    ),
             )
         }
     }

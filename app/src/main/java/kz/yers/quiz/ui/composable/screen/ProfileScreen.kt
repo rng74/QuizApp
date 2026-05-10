@@ -28,7 +28,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +49,16 @@ import kz.yers.quiz.ui.theme.RussoOneFamily
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private val BadgeGlyphStyle =
+    TextStyle(
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+        lineHeightStyle =
+            LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.Both,
+            ),
+    )
 
 @Composable
 fun ProfileScreen(
@@ -225,6 +238,8 @@ private fun Avatar(initial: String) {
             fontFamily = RussoOneFamily,
             fontSize = 36.sp,
             color = Color.White,
+            textAlign = TextAlign.Center,
+            style = BadgeGlyphStyle,
         )
     }
 }
@@ -430,6 +445,8 @@ private fun ModeDot(mode: GameMode?) {
             color = Color.White,
             fontFamily = RussoOneFamily,
             fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            style = BadgeGlyphStyle,
         )
     }
 }

@@ -52,6 +52,7 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import kz.yers.quiz.BASE_URL
 import kz.yers.quiz.R
+import kz.yers.quiz.model.LocalA11y
 import kz.yers.quiz.model.QuizQuestion
 import kz.yers.quiz.ui.composable.AudioPlayer
 import kz.yers.quiz.ui.composable.BlurredImage
@@ -64,6 +65,8 @@ import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
+import kz.yers.quiz.ui.theme.errorColor
+import kz.yers.quiz.ui.theme.successColor
 import kz.yers.quiz.utils.SoundManager
 import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.compose.OnParticleSystemUpdateListener
@@ -89,11 +92,14 @@ fun QuizScreen(
     onPlaybackReady: () -> Unit,
 ) {
     val tint = modeTint ?: QuizColors.tint
+    val a11y = LocalA11y.current
+    val correctSurface = successColor()
+    val errorSurface = errorColor()
     val timerProgress by remember(timeRemaining) {
         mutableFloatStateOf(timeRemaining / maxTime.toFloat())
     }
     val isTimerCritical = timeRemaining < 3_000L
-    val timerColor = if (isTimerCritical) QuizColors.error else tint
+    val timerColor = if (isTimerCritical) errorSurface else tint
 
     var previousScore by remember { mutableIntStateOf(score) }
     val scale = remember { Animatable(1f) }
@@ -115,7 +121,7 @@ fun QuizScreen(
     LaunchedEffect(userAnswer) {
         if (isCorrect) {
             SoundManager.playCorrectAnswer()
-        } else if (isWrong) {
+        } else if (isWrong && !a11y.reduceMotion) {
             shakeAnim.snapTo(0f)
             shakeAnim.animateTo(
                 targetValue = 0f,
@@ -134,9 +140,11 @@ fun QuizScreen(
         }
     }
     LaunchedEffect(score) {
-        if (score > previousScore) {
+        if (score > previousScore && !a11y.reduceMotion) {
             scale.animateTo(1.5f, animationSpec = tween(durationMillis = 300))
             scale.animateTo(1f, animationSpec = tween(durationMillis = 300))
+            previousScore = score
+        } else if (score > previousScore) {
             previousScore = score
         }
     }
@@ -147,7 +155,7 @@ fun QuizScreen(
                 .fillMaxSize()
                 .background(QuizColors.paper),
     ) {
-        if (isCorrect) {
+        if (isCorrect && !a11y.reduceMotion) {
             KonfettiView(
                 modifier = Modifier.fillMaxSize(),
                 parties =
@@ -275,11 +283,16 @@ fun QuizScreen(
                         OptionTile(
                             text = option,
                             modifier = Modifier.weight(1f).then(selectionShake),
-                            tint = tint,
                             highlight =
                                 when {
-                                    optionCorrect -> QuizColors.success
-                                    optionSelectedWrong -> QuizColors.error
+                                    optionCorrect -> correctSurface
+                                    optionSelectedWrong -> errorSurface
+                                    else -> null
+                                },
+                            iconGlyph =
+                                when {
+                                    optionCorrect -> "✓"
+                                    optionSelectedWrong -> "✕"
                                     else -> null
                                 },
                             enabled = userAnswer == null,
@@ -309,17 +322,32 @@ fun QuizScreen(
             }
         }
 
-        // Big celebratory feedback overlay — Bangers display, fades+scales in/out.
+        // Big celebratory feedback overlay — Bangers display, fades+scales in/out (or static when
+        // reduce-motion is on). Always paired with a redundant ✓/✕ glyph for colour-blind safety.
+        val enter =
+            if (a11y.reduceMotion) {
+                fadeIn(animationSpec = tween(120))
+            } else {
+                fadeIn(animationSpec = tween(180)) +
+                    scaleIn(initialScale = 0.6f, animationSpec = tween(280))
+            }
+        val exit =
+            if (a11y.reduceMotion) {
+                fadeOut(animationSpec = tween(120))
+            } else {
+                fadeOut(animationSpec = tween(120)) +
+                    scaleOut(targetScale = 0.85f, animationSpec = tween(120))
+            }
         AnimatedVisibility(
             visible = userAnswer != null,
-            enter = fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.6f, animationSpec = tween(280)),
-            exit = fadeOut(animationSpec = tween(120)) + scaleOut(targetScale = 0.85f, animationSpec = tween(120)),
+            enter = enter,
+            exit = exit,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 96.dp),
         ) {
             ImpactText(
-                text = if (isCorrect) "ВЕРНО!" else "МИМО!",
+                text = if (isCorrect) "✓ ВЕРНО!" else "✕ МИМО!",
                 style = MaterialTheme.typography.displayLarge,
-                tintColor = if (isCorrect) QuizColors.success else QuizColors.error,
+                tintColor = if (isCorrect) correctSurface else errorSurface,
             )
         }
     }
@@ -381,17 +409,16 @@ private fun ScoreChip(
 private fun OptionTile(
     text: String,
     modifier: Modifier,
-    tint: Color,
     highlight: Color?,
+    iconGlyph: String?,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val borderColor = highlight ?: QuizColors.ink
     val borderWidth = if (highlight != null) QuizStrokes.hero else QuizStrokes.panel
     val backgroundColor =
-        when (highlight) {
-            QuizColors.success -> QuizColors.success.copy(alpha = 0.15f)
-            QuizColors.error -> QuizColors.error.copy(alpha = 0.15f)
+        when {
+            highlight != null -> highlight.copy(alpha = 0.15f)
             else -> Color.White
         }
     val shape = RoundedCornerShape(QuizRadii.button)
@@ -412,12 +439,23 @@ private fun OptionTile(
                 .padding(horizontal = 12.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = text,
-            color = QuizColors.ink.copy(alpha = if (enabled || highlight != null) 1f else 0.6f),
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            lineHeight = 18.sp,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (iconGlyph != null) {
+                Text(
+                    text = iconGlyph,
+                    color = highlight ?: QuizColors.ink,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                )
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(
+                text = text,
+                color = QuizColors.ink.copy(alpha = if (enabled || highlight != null) 1f else 0.6f),
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+            )
+        }
     }
 }

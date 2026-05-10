@@ -23,6 +23,9 @@ class UserPrefs(private val context: Context) {
         val POSTER_ENABLED = booleanPreferencesKey("posterEnabled")
         val SOUND_ENABLED = booleanPreferencesKey("soundEnabled")
         val A11Y_REDUCE_MOTION = booleanPreferencesKey("a11yReduceMotion")
+        val A11Y_COLOR_BLIND_SAFE = booleanPreferencesKey("a11yColorBlindSafe")
+        val A11Y_LARGER_TEXT = booleanPreferencesKey("a11yLargerText")
+        val A11Y_DYSLEXIA_FONT = booleanPreferencesKey("a11yDyslexiaFont")
     }
 
     val userName: Flow<String> = context.userPrefsDataStore.data.map { it[Keys.USER_NAME] ?: "Игрок" }
@@ -38,6 +41,12 @@ class UserPrefs(private val context: Context) {
     val soundEnabled: Flow<Boolean> = context.userPrefsDataStore.data.map { it[Keys.SOUND_ENABLED] ?: true }
 
     val reduceMotion: Flow<Boolean> = context.userPrefsDataStore.data.map { it[Keys.A11Y_REDUCE_MOTION] ?: false }
+
+    val colorBlindSafe: Flow<Boolean> = context.userPrefsDataStore.data.map { it[Keys.A11Y_COLOR_BLIND_SAFE] ?: false }
+
+    val largerText: Flow<Boolean> = context.userPrefsDataStore.data.map { it[Keys.A11Y_LARGER_TEXT] ?: false }
+
+    val dyslexiaFont: Flow<Boolean> = context.userPrefsDataStore.data.map { it[Keys.A11Y_DYSLEXIA_FONT] ?: false }
 
     suspend fun setUserName(value: String) {
         context.userPrefsDataStore.edit { it[Keys.USER_NAME] = value }
@@ -67,5 +76,17 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setReduceMotion(value: Boolean) {
         context.userPrefsDataStore.edit { it[Keys.A11Y_REDUCE_MOTION] = value }
+    }
+
+    suspend fun setColorBlindSafe(value: Boolean) {
+        context.userPrefsDataStore.edit { it[Keys.A11Y_COLOR_BLIND_SAFE] = value }
+    }
+
+    suspend fun setLargerText(value: Boolean) {
+        context.userPrefsDataStore.edit { it[Keys.A11Y_LARGER_TEXT] = value }
+    }
+
+    suspend fun setDyslexiaFont(value: Boolean) {
+        context.userPrefsDataStore.edit { it[Keys.A11Y_DYSLEXIA_FONT] = value }
     }
 }

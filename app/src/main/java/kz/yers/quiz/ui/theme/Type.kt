@@ -6,6 +6,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import kz.yers.quiz.R
 
@@ -18,6 +19,7 @@ private val provider =
 
 private val bangersFont = GoogleFont("Bangers")
 private val russoOneFont = GoogleFont("Russo One")
+private val lexendFont = GoogleFont("Lexend")
 
 val BangersFamily =
     FontFamily(
@@ -29,102 +31,75 @@ val RussoOneFamily =
         Font(googleFont = russoOneFont, fontProvider = provider, weight = FontWeight.Normal),
     )
 
-private val baseBody =
+/**
+ * Lexend — Google Font designed for reading-friendliness; standing in for OpenDyslexic which is
+ * not on the Google Fonts CDN. Toggled via `A11yState.dyslexiaFont`.
+ */
+val DyslexiaFriendlyFamily =
+    FontFamily(
+        Font(googleFont = lexendFont, fontProvider = provider, weight = FontWeight.Normal),
+        Font(googleFont = lexendFont, fontProvider = provider, weight = FontWeight.Medium),
+        Font(googleFont = lexendFont, fontProvider = provider, weight = FontWeight.Bold),
+    )
+
+private fun TextUnit.scaled(factor: Float): TextUnit = if (this.isSpecified) (this.value * factor).sp else this
+
+private val TextUnit.isSpecified: Boolean
+    get() = this != TextUnit.Unspecified
+
+/**
+ * Build a Typography instance applying:
+ *   - bodyTextScale multiplier (1.0 / 1.15 / 1.3) to body + label sizes (display/headline stay
+ *     constant — the manga display layer does not benefit from upsizing)
+ *   - bodyFamily swap when the user prefers a dyslexia-friendly body font
+ */
+fun buildQuizTypography(
+    bodyTextScale: Float = 1f,
+    bodyFamily: FontFamily = FontFamily.Default,
+): Typography {
+    fun body(
+        size: Int,
+        line: Int,
+        letter: Float,
+        weight: FontWeight = FontWeight.Normal,
+    ) = TextStyle(
+        fontFamily = bodyFamily,
+        fontWeight = weight,
+        fontSize = (size * bodyTextScale).sp,
+        lineHeight = (line * bodyTextScale).sp,
+        letterSpacing = letter.sp,
+    )
+
+    return Typography(
+        // Bangers — display / impact (NOT scaled)
+        displayLarge = TextStyle(BangersFamily, 48, 48, 1f),
+        displayMedium = TextStyle(BangersFamily, 36, 36, 1f),
+        displaySmall = TextStyle(BangersFamily, 28, 32, 1f),
+        // Russo One — sections (NOT scaled)
+        headlineLarge = TextStyle(RussoOneFamily, 24, 28, 1f),
+        headlineMedium = TextStyle(RussoOneFamily, 20, 24, 1f),
+        headlineSmall = TextStyle(RussoOneFamily, 16, 20, 0.5f),
+        titleLarge = TextStyle(RussoOneFamily, 16, 20, 0.5f),
+        // Body — scaled + optionally Lexend
+        bodyLarge = body(16, 24, 0.5f),
+        bodyMedium = body(14, 20, 0.25f),
+        labelLarge = body(14, 18, 0.5f, FontWeight.Bold),
+        labelMedium = body(11, 14, 1f, FontWeight.Bold),
+    )
+}
+
+private fun TextStyle(
+    family: FontFamily,
+    size: Int,
+    line: Int,
+    letter: Float,
+): TextStyle =
     TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = family,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp,
+        fontSize = size.sp,
+        lineHeight = line.sp,
+        letterSpacing = letter.sp,
     )
 
-val QuizTypography =
-    Typography(
-        // Bangers — display / impact
-        displayLarge =
-            TextStyle(
-                fontFamily = BangersFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 48.sp,
-                lineHeight = 48.sp,
-                letterSpacing = 1.sp,
-            ),
-        displayMedium =
-            TextStyle(
-                fontFamily = BangersFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 36.sp,
-                lineHeight = 36.sp,
-                letterSpacing = 1.sp,
-            ),
-        displaySmall =
-            TextStyle(
-                fontFamily = BangersFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 28.sp,
-                lineHeight = 32.sp,
-                letterSpacing = 1.sp,
-            ),
-        // Russo One — section / app-bar titles
-        headlineLarge =
-            TextStyle(
-                fontFamily = RussoOneFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 24.sp,
-                lineHeight = 28.sp,
-                letterSpacing = 1.sp,
-            ),
-        headlineMedium =
-            TextStyle(
-                fontFamily = RussoOneFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 20.sp,
-                lineHeight = 24.sp,
-                letterSpacing = 1.sp,
-            ),
-        headlineSmall =
-            TextStyle(
-                fontFamily = RussoOneFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
-                letterSpacing = 0.5.sp,
-            ),
-        titleLarge =
-            TextStyle(
-                fontFamily = RussoOneFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
-                letterSpacing = 0.5.sp,
-            ),
-        // Roboto / system — body + buttons
-        bodyLarge = baseBody,
-        bodyMedium =
-            TextStyle(
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                letterSpacing = 0.25.sp,
-            ),
-        labelLarge =
-            TextStyle(
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-                letterSpacing = 0.5.sp,
-            ),
-        labelMedium =
-            TextStyle(
-                fontFamily = FontFamily.Default,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                letterSpacing = 1.sp,
-            ),
-    )
-
-@Deprecated("Use QuizTypography", ReplaceWith("QuizTypography"))
-val Typography: Typography = QuizTypography
+val QuizTypography: Typography = buildQuizTypography()

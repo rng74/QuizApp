@@ -18,6 +18,7 @@ import kz.yers.quiz.data.local.dao.RunHistoryDao
 import kz.yers.quiz.data.local.entity.DailyAttemptEntity
 import kz.yers.quiz.data.local.entity.RunHistoryEntity
 import kz.yers.quiz.data.prefs.UserPrefs
+import kz.yers.quiz.model.A11yState
 import kz.yers.quiz.model.Achievements
 import kz.yers.quiz.model.AppState
 import kz.yers.quiz.model.DailyAttemptSummary
@@ -74,12 +75,23 @@ class QuizAppViewModel(
     val dailyState = mutableStateOf(DailyState())
     val profileState = mutableStateOf(ProfileState())
 
+    val a11y = mutableStateOf(A11yState())
+    val soundEnabled = mutableStateOf(true)
+
     private var isDailyRun = false
 
     init {
         _highScore.intValue = repository.getHighScore()
         viewModelScope.launch {
             _isPosterEnabled.value = userPrefs.posterEnabled.first()
+            soundEnabled.value = userPrefs.soundEnabled.first()
+            a11y.value =
+                A11yState(
+                    reduceMotion = userPrefs.reduceMotion.first(),
+                    colorBlindSafe = userPrefs.colorBlindSafe.first(),
+                    largerText = userPrefs.largerText.first(),
+                    dyslexiaFont = userPrefs.dyslexiaFont.first(),
+                )
             val tutorialDone = userPrefs.tutorialCompleted.first()
             needsOnboarding.value = !tutorialDone
             onboardingResolved.value = true
@@ -89,6 +101,46 @@ class QuizAppViewModel(
     fun completeOnboarding() {
         needsOnboarding.value = false
         viewModelScope.launch { userPrefs.setTutorialCompleted(true) }
+    }
+
+    fun openSettings() {
+        appState.value = AppState.Settings
+    }
+
+    fun setSoundEnabled(value: Boolean) {
+        soundEnabled.value = value
+        viewModelScope.launch { userPrefs.setSoundEnabled(value) }
+    }
+
+    fun setReduceMotion(value: Boolean) {
+        a11y.value = a11y.value.copy(reduceMotion = value)
+        viewModelScope.launch { userPrefs.setReduceMotion(value) }
+    }
+
+    fun setColorBlindSafe(value: Boolean) {
+        a11y.value = a11y.value.copy(colorBlindSafe = value)
+        viewModelScope.launch { userPrefs.setColorBlindSafe(value) }
+    }
+
+    fun setLargerText(value: Boolean) {
+        a11y.value = a11y.value.copy(largerText = value)
+        viewModelScope.launch { userPrefs.setLargerText(value) }
+    }
+
+    fun setDyslexiaFont(value: Boolean) {
+        a11y.value = a11y.value.copy(dyslexiaFont = value)
+        viewModelScope.launch { userPrefs.setDyslexiaFont(value) }
+    }
+
+    fun resetHighScore() {
+        repository.clearHighScore()
+        _highScore.intValue = 0
+    }
+
+    fun replayTutorial() {
+        viewModelScope.launch { userPrefs.setTutorialCompleted(false) }
+        needsOnboarding.value = true
+        appState.value = AppState.Menu
     }
 
     fun openDaily() {

@@ -59,6 +59,7 @@ fun MangaButton(
     label: String,
 ) {
     val tint = LocalModeTint.current
+    val a11y = kz.yers.quiz.model.LocalA11y.current
     val (background, contentColor, shadowColor) =
         when (variant) {
             MangaButtonVariant.Tint -> Triple(tint, QuizColors.ink, QuizColors.ink)
@@ -68,7 +69,7 @@ fun MangaButton(
 
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
-    val pressed = isPressed && enabled
+    val pressed = isPressed && enabled && !a11y.reduceMotion
 
     val translate by animateDpAsState(
         targetValue = if (pressed) 2.dp else 0.dp,

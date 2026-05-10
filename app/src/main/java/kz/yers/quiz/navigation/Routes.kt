@@ -8,4 +8,5 @@ object Routes {
     const val RESULT = "result"
     const val DAILY = "daily"
     const val PROFILE = "profile"
+    const val SETTINGS = "settings"
 }

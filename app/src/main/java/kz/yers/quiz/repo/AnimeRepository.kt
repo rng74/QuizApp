@@ -142,4 +142,8 @@ class AnimeRepository(
     fun getHighScore(): Int {
         return sharedPreferences.getInt(HIGH_SCORE, 0)
     }
+
+    fun clearHighScore() {
+        sharedPreferences.edit { remove(HIGH_SCORE) }
+    }
 }

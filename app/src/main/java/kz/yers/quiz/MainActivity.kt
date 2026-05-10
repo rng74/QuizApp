@@ -41,8 +41,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun QuizApp(viewModel: QuizAppViewModel) {
     val mode by viewModel.activeMode
+    val a11y by viewModel.a11y
     val tint = mode?.tint ?: QuizColors.tint
-    QuizAppTheme(modeTint = tint) {
+    QuizAppTheme(modeTint = tint, a11y = a11y) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             contentWindowInsets = WindowInsets.safeDrawing,
