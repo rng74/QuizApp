@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import kz.yers.quiz.QuizAppViewModel
+import kz.yers.quiz.data.local.AppDatabase
+import kz.yers.quiz.data.prefs.UserPrefs
 import kz.yers.quiz.repo.AnimeRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -15,6 +17,9 @@ val appModule =
         single<SharedPreferences> {
             androidContext().getSharedPreferences("quiz_prefs", Context.MODE_PRIVATE)
         }
+        single { AppDatabase.build(androidContext()) }
+        single { get<AppDatabase>().runHistoryDao() }
+        single { UserPrefs(androidContext()) }
         single { AnimeRepository(androidContext(), get(), get()) }
-        viewModel { QuizAppViewModel(get()) }
+        viewModel { QuizAppViewModel(get(), get(), get()) }
     }

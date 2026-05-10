@@ -10,19 +10,28 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kz.yers.quiz.data.local.dao.RunHistoryDao
+import kz.yers.quiz.data.local.entity.RunHistoryEntity
+import kz.yers.quiz.data.prefs.UserPrefs
 import kz.yers.quiz.model.AppState
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.QuizQuestion
 import kz.yers.quiz.repo.AnimeRepository
+import java.time.LocalDate
+import java.time.ZoneId
 
 class QuizAppViewModel(
     private val repository: AnimeRepository,
+    private val runHistoryDao: RunHistoryDao,
+    private val userPrefs: UserPrefs,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
     private var quizQuestions: List<QuizQuestion> = emptyList()
+    private var runStartElapsedMs: Long = 0L
 
     private val _highScore = mutableIntStateOf(0)
     val highScore: State<Int> = _highScore
@@ -44,12 +53,21 @@ class QuizAppViewModel(
     private val _isPosterEnabled = mutableStateOf(true)
     val isPosterEnabled: State<Boolean> = _isPosterEnabled
 
+    val activeMode = mutableStateOf<GameMode?>(null)
+
+    val isNewRecord = mutableStateOf(false)
+
     init {
         _highScore.intValue = repository.getHighScore()
+        viewModelScope.launch {
+            _isPosterEnabled.value = userPrefs.posterEnabled.first()
+        }
     }
 
     fun startQuiz(gameMode: GameMode) {
         tries += 1
+        activeMode.value = gameMode
+        runStartElapsedMs = SystemClock.elapsedRealtime()
         loadQuizQuestions(gameMode)
     }
 
@@ -59,21 +77,10 @@ class QuizAppViewModel(
             withContext(Dispatchers.IO) {
                 quizQuestions =
                     when (gameMode) {
-                        GameMode.EASY -> {
-                            repository.getRandomizedQuestionsGt(30, 8.3f)
-                        }
-
-                        GameMode.NORMAL -> {
-                            repository.getRandomizedQuestionsGt(30, 7.5f)
-                        }
-
-                        GameMode.RANDOM -> {
-                            repository.getRandomizedQuestions(30)
-                        }
-
-                        GameMode.SHIT -> {
-                            repository.getRandomizedQuestionsLte(30, 6f)
-                        }
+                        GameMode.EASY -> repository.getRandomizedQuestionsGt(30, 8.3f)
+                        GameMode.NORMAL -> repository.getRandomizedQuestionsGt(30, 7.5f)
+                        GameMode.RANDOM -> repository.getRandomizedQuestions(30)
+                        GameMode.SHIT -> repository.getRandomizedQuestionsLte(30, 6f)
                     }
             }
             appState.value =
@@ -111,11 +118,12 @@ class QuizAppViewModel(
 
     private fun onTimeUp() {
         userAnswer.value = null
-        appState.value = AppState.Result
+        finishRun()
     }
 
     fun setPosterEnabled(enabled: Boolean) {
         _isPosterEnabled.value = enabled
+        viewModelScope.launch { userPrefs.setPosterEnabled(enabled) }
     }
 
     fun submitAnswer(selectedAnswer: String) {
@@ -139,7 +147,7 @@ class QuizAppViewModel(
             return
         }
         if (userAnswer.value != state.currentQuestion.correctAnswer.titleRu) {
-            appState.value = AppState.Result
+            finishRun()
         } else if (state.currentQuestionIndex < quizQuestions.size - 1) {
             appState.value =
                 AppState.Quiz(
@@ -148,8 +156,47 @@ class QuizAppViewModel(
                 )
             userAnswer.value = null
         } else {
-            appState.value = AppState.Result
+            finishRun()
         }
+    }
+
+    private fun finishRun() {
+        val finalScore = score.intValue
+        val mode = activeMode.value
+        val durationMs = SystemClock.elapsedRealtime() - runStartElapsedMs
+        val previousBest = repository.getHighScore()
+        isNewRecord.value = finalScore > previousBest
+
+        if (mode != null) {
+            viewModelScope.launch {
+                withContext(Dispatchers.IO) {
+                    runHistoryDao.insert(
+                        RunHistoryEntity(
+                            mode = mode.name,
+                            score = finalScore,
+                            durationMs = durationMs,
+                            dateEpochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
+                        ),
+                    )
+                }
+                updateStreak()
+            }
+        }
+
+        appState.value = AppState.Result
+    }
+
+    private suspend fun updateStreak() {
+        val today = LocalDate.now(ZoneId.systemDefault()).toEpochDay()
+        val lastPlayed = userPrefs.lastPlayedEpochDay.first()
+        val current = userPrefs.currentStreakDays.first()
+        val next =
+            when {
+                lastPlayed == today -> current
+                lastPlayed == today - 1 -> current + 1
+                else -> 1
+            }
+        userPrefs.setStreak(next, today)
     }
 
     fun resetQuiz() {
@@ -158,5 +205,6 @@ class QuizAppViewModel(
         appState.value = AppState.Menu
         userAnswer.value = null
         score.intValue = 0
+        isNewRecord.value = false
     }
 }

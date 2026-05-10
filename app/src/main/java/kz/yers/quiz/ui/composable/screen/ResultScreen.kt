@@ -1,6 +1,7 @@
 package kz.yers.quiz.ui.composable.screen
 
 import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,7 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.android.play.core.review.ReviewManager
 import com.google.android.play.core.review.ReviewManagerFactory
 import kotlinx.coroutines.Dispatchers
@@ -28,58 +30,107 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kz.yers.quiz.R
+import kz.yers.quiz.ui.composable.manga.ImpactText
+import kz.yers.quiz.ui.composable.manga.MangaButton
+import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
+import kz.yers.quiz.ui.composable.manga.MangaPanel
+import kz.yers.quiz.ui.theme.BangersFamily
+import kz.yers.quiz.ui.theme.QuizColors
+import kz.yers.quiz.ui.theme.QuizShadows
+import kz.yers.quiz.ui.theme.RussoOneFamily
 
 @Composable
 fun ResultScreen(
     score: Int,
     needToAskReview: Boolean,
+    isNewRecord: Boolean,
     onReviewSuccess: () -> Unit,
     onRestart: () -> Unit,
+    modeTint: Color? = null,
 ) {
+    val tint = modeTint ?: QuizColors.tint
     Column(
         modifier =
             Modifier
                 .fillMaxSize()
-                .padding(32.dp),
+                .background(QuizColors.paper)
+                .padding(horizontal = 24.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(
-            text = stringResource(R.string.quiz_finished),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.your_score, score),
+        ImpactText(
+            text = stringResource(R.string.quiz_finished).uppercase(),
             style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.secondary,
+            tintColor = tint,
         )
-        Spacer(modifier = Modifier.height(48.dp))
-        Button(
-            onClick = onRestart,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Text(text = stringResource(R.string.play_again), color = Color.White)
+        Spacer(Modifier.height(24.dp))
+
+        if (isNewRecord) {
+            MangaPanel(
+                modifier = Modifier.fillMaxWidth(),
+                background = QuizColors.streakFire,
+                shadowOffset = QuizShadows.medium,
+                contentPadding = 12.dp,
+            ) {
+                Text(
+                    text = "НОВЫЙ РЕКОРД",
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    fontFamily = RussoOneFamily,
+                    fontSize = 16.sp,
+                    letterSpacing = 2.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+            Spacer(Modifier.height(20.dp))
         }
+
+        MangaPanel(
+            modifier = Modifier.fillMaxWidth(),
+            shadowOffset = QuizShadows.large,
+            contentPadding = 28.dp,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "ВАШ РЕЗУЛЬТАТ",
+                    fontFamily = RussoOneFamily,
+                    fontSize = 12.sp,
+                    letterSpacing = 1.5.sp,
+                    color = QuizColors.ink.copy(alpha = 0.6f),
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = score.toString(),
+                    fontFamily = BangersFamily,
+                    fontSize = 72.sp,
+                    color = QuizColors.accentBlue,
+                    fontWeight = FontWeight.Normal,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(40.dp))
+
+        MangaButton(
+            label = stringResource(R.string.play_again),
+            variant = MangaButtonVariant.Tint,
+            onClick = onRestart,
+            modifier = Modifier.fillMaxWidth(),
+            minHeight = 56.dp,
+        )
     }
+
     if (needToAskReview) {
         val localContext = LocalContext.current
         val coroutineScope = rememberCoroutineScope()
-        val reviewManager =
-            remember {
-                ReviewManagerFactory.create(localContext)
-            }
+        val reviewManager = remember { ReviewManagerFactory.create(localContext) }
         LaunchedEffect("") {
             coroutineScope.launch {
                 val success = launchInAppReview(localContext as Activity, reviewManager)
-                if (success) {
-                    onReviewSuccess()
-                }
+                if (success) onReviewSuccess()
             }
         }
     }

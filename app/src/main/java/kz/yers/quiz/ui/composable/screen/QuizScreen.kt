@@ -1,10 +1,17 @@
 package kz.yers.quiz.ui.composable.screen
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,11 +23,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,11 +39,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -50,8 +55,15 @@ import kz.yers.quiz.R
 import kz.yers.quiz.model.QuizQuestion
 import kz.yers.quiz.ui.composable.AudioPlayer
 import kz.yers.quiz.ui.composable.BlurredImage
-import kz.yers.quiz.ui.theme.Green700
-import kz.yers.quiz.ui.theme.Red700
+import kz.yers.quiz.ui.composable.manga.ImpactText
+import kz.yers.quiz.ui.composable.manga.MangaButton
+import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
+import kz.yers.quiz.ui.composable.manga.MangaPanel
+import kz.yers.quiz.ui.theme.QuizColors
+import kz.yers.quiz.ui.theme.QuizRadii
+import kz.yers.quiz.ui.theme.QuizShadows
+import kz.yers.quiz.ui.theme.QuizStrokes
+import kz.yers.quiz.ui.theme.RussoOneFamily
 import kz.yers.quiz.utils.SoundManager
 import nl.dionsegijn.konfetti.compose.KonfettiView
 import nl.dionsegijn.konfetti.compose.OnParticleSystemUpdateListener
@@ -70,21 +82,23 @@ fun QuizScreen(
     maxTime: Long,
     score: Int,
     streak: Int,
-    shouldShake: Boolean,
     isPosterEnabled: Boolean,
+    modeTint: Color? = null,
     onAnswerSelected: (String) -> Unit,
     onNextQuestion: () -> Unit,
     onPlaybackReady: () -> Unit,
 ) {
-    val progress by remember(timeRemaining) {
+    val tint = modeTint ?: QuizColors.tint
+    val timerProgress by remember(timeRemaining) {
         mutableFloatStateOf(timeRemaining / maxTime.toFloat())
     }
-    var previousScore by remember {
-        mutableIntStateOf(score)
-    }
+    val isTimerCritical = timeRemaining < 3_000L
+    val timerColor = if (isTimerCritical) QuizColors.error else tint
+
+    var previousScore by remember { mutableIntStateOf(score) }
     val scale = remember { Animatable(1f) }
     val density = LocalDensity.current
-    val imageHeight = 250.dp
+    val imageHeight = 220.dp
 
     val shakeAnim = remember { Animatable(0f) }
 
@@ -95,10 +109,13 @@ fun QuizScreen(
         isPlaying = true,
     )
 
+    val isCorrect = userAnswer != null && userAnswer == question.correctAnswer.titleRu
+    val isWrong = userAnswer != null && !isCorrect
+
     LaunchedEffect(userAnswer) {
-        if (userAnswer == question.correctAnswer.titleRu) {
+        if (isCorrect) {
             SoundManager.playCorrectAnswer()
-        } else if (userAnswer != null) {
+        } else if (isWrong) {
             shakeAnim.snapTo(0f)
             shakeAnim.animateTo(
                 targetValue = 0f,
@@ -118,21 +135,19 @@ fun QuizScreen(
     }
     LaunchedEffect(score) {
         if (score > previousScore) {
-            // Animate scale up
-            scale.animateTo(
-                targetValue = 1.5f,
-                animationSpec = tween(durationMillis = 300),
-            )
-            // Animate scale back to normal
-            scale.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 300),
-            )
+            scale.animateTo(1.5f, animationSpec = tween(durationMillis = 300))
+            scale.animateTo(1f, animationSpec = tween(durationMillis = 300))
             previousScore = score
         }
     }
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (userAnswer == question.correctAnswer.titleRu) {
+
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(QuizColors.paper),
+    ) {
+        if (isCorrect) {
             KonfettiView(
                 modifier = Modifier.fillMaxSize(),
                 parties =
@@ -152,166 +167,257 @@ fun QuizScreen(
                         override fun onParticleSystemEnded(
                             system: PartySystem,
                             activeSystems: Int,
-                        ) {
-                        }
+                        ) {}
                     },
             )
         }
+
         Column(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            // Top: timer bar + score chip + streak.
+            TimerBar(progress = timerProgress, color = timerColor)
+            Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Spacer(Modifier.weight(1f))
-                Text(
-                    text = stringResource(R.string.score, score),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier =
-                        Modifier
-                            .scale(scale.value)
-                            .align(Alignment.Bottom),
-                )
+                ScoreChip(score = score, tint = tint, modifier = Modifier.scale(scale.value))
                 if (streak > 5) {
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(8.dp))
                     LottieAnimation(
                         composition = composition,
                         progress = { lottieProgress },
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(36.dp),
                     )
                 }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = "${(streak).coerceAtMost(30)}/30",
+                    fontFamily = RussoOneFamily,
+                    fontSize = 13.sp,
+                    color = QuizColors.ink.copy(alpha = 0.6f),
+                    letterSpacing = 1.sp,
+                )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(250.dp),
+            // Poster panel.
+            MangaPanel(
+                modifier = Modifier.fillMaxWidth().height(imageHeight),
+                contentPadding = 0.dp,
+                shadowOffset = QuizShadows.medium,
+                background = QuizColors.paper2,
             ) {
-                if (isPosterEnabled) {
-                    BlurredImage(
-                        url = BASE_URL + question.correctAnswer.posterLink,
-                        isBlurred = userAnswer == null,
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (isPosterEnabled) {
+                        BlurredImage(
+                            url = BASE_URL + question.correctAnswer.posterLink,
+                            isBlurred = userAnswer == null,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(QuizRadii.card)),
+                        )
+                    }
+                    Box(
                         modifier =
                             Modifier
-                                .fillMaxWidth()
-                                .clip(MaterialTheme.shapes.medium),
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors =
+                                            listOf(
+                                                Color.Transparent,
+                                                Color.Black.copy(alpha = 0.6f),
+                                            ),
+                                        startY = 0f,
+                                        endY = with(density) { imageHeight.toPx() },
+                                    ),
+                                ),
                     )
                 }
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                                    startY = 0f,
-                                    endY = with(density) { imageHeight.toPx() },
-                                ),
-                            ),
-                )
-                LinearProgressIndicator(
-                    progress = {
-                        progress.coerceIn(0f, 1f)
-                    },
-                    color = Color.Blue,
-                    strokeCap = StrokeCap.Butt,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .align(Alignment.TopCenter),
-                )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
 
             AudioPlayer(
                 url = BASE_URL + question.correctAnswer.songLink,
                 needPlay = userAnswer == null,
-                onPlaybackReady = {
-                    onPlaybackReady()
-                },
-                onPlaybackEnded = {
-                    onNextQuestion()
-                },
+                onPlaybackReady = onPlaybackReady,
+                onPlaybackEnded = onNextQuestion,
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
 
-            question.options.forEach { option ->
-                val isCorrect = userAnswer != null && option == question.correctAnswer.titleRu
-                val isSelected = userAnswer != null && userAnswer == option
-                val modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .let {
-                            if (isSelected) {
-                                it.offset { IntOffset(shakeAnim.value.roundToInt(), 0) }
-                            } else {
-                                it
-                            }
-                        }
-                OutlinedButton(
-                    onClick = { onAnswerSelected(option) },
-                    modifier = modifier,
-                    enabled = userAnswer == null,
-                    colors =
-                        ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    shape = MaterialTheme.shapes.medium,
-                    border =
-                        BorderStroke(
-                            1.dp,
-                            when {
-                                isCorrect -> Green700
-                                isSelected -> Red700
-                                else -> MaterialTheme.colorScheme.primary
-                            },
-                        ),
+            // Answer options — 2x2 grid.
+            val opts = question.options
+            opts.chunked(2).forEach { rowOpts ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(text = option, style = MaterialTheme.typography.bodyLarge)
+                    rowOpts.forEach { option ->
+                        val optionCorrect = userAnswer != null && option == question.correctAnswer.titleRu
+                        val optionSelectedWrong = userAnswer != null && userAnswer == option && !optionCorrect
+
+                        val selectionShake =
+                            if (optionSelectedWrong) {
+                                Modifier.offset { IntOffset(shakeAnim.value.roundToInt(), 0) }
+                            } else {
+                                Modifier
+                            }
+
+                        OptionTile(
+                            text = option,
+                            modifier = Modifier.weight(1f).then(selectionShake),
+                            tint = tint,
+                            highlight =
+                                when {
+                                    optionCorrect -> QuizColors.success
+                                    optionSelectedWrong -> QuizColors.error
+                                    else -> null
+                                },
+                            enabled = userAnswer == null,
+                            onClick = { onAnswerSelected(option) },
+                        )
+                    }
+                    if (rowOpts.size == 1) Spacer(Modifier.weight(1f))
                 }
+                Spacer(Modifier.height(8.dp))
             }
+
+            Spacer(Modifier.height(8.dp))
 
             if (userAnswer != null) {
-                Spacer(modifier = Modifier.height(32.dp))
-                val isCorrect = userAnswer == question.correctAnswer.titleRu
-                val feedbackText =
-                    if (isCorrect) stringResource(R.string.correct) else stringResource(R.string.incorrect)
-                val feedbackColor = if (isCorrect) Green700 else Red700
-                Text(
-                    text = feedbackText,
-                    color = feedbackColor,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
+                MangaButton(
+                    label =
+                        if (isCorrect) {
+                            stringResource(R.string.next_question)
+                        } else {
+                            stringResource(R.string.check_results)
+                        },
+                    variant = if (isCorrect) MangaButtonVariant.Tint else MangaButtonVariant.Ink,
                     onClick = onNextQuestion,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                    shape = MaterialTheme.shapes.medium,
-                ) {
-                    val text =
-                        if (isCorrect) stringResource(R.string.next_question) else stringResource(R.string.check_results)
-                    Text(text = text, color = Color.White)
-                }
+                    modifier = Modifier.fillMaxWidth(),
+                    minHeight = 56.dp,
+                )
             }
         }
+
+        // Big celebratory feedback overlay — Bangers display, fades+scales in/out.
+        AnimatedVisibility(
+            visible = userAnswer != null,
+            enter = fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.6f, animationSpec = tween(280)),
+            exit = fadeOut(animationSpec = tween(120)) + scaleOut(targetScale = 0.85f, animationSpec = tween(120)),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 96.dp),
+        ) {
+            ImpactText(
+                text = if (isCorrect) "ВЕРНО!" else "МИМО!",
+                style = MaterialTheme.typography.displayLarge,
+                tintColor = if (isCorrect) QuizColors.success else QuizColors.error,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimerBar(
+    progress: Float,
+    color: Color,
+) {
+    val shape = RoundedCornerShape(QuizRadii.pill)
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(14.dp)
+                .clip(shape)
+                .background(Color.White)
+                .border(QuizStrokes.regular, QuizColors.ink, shape),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth(fraction = progress.coerceIn(0f, 1f))
+                    .height(14.dp)
+                    .clip(shape)
+                    .background(color),
+        )
+    }
+}
+
+@Composable
+private fun ScoreChip(
+    score: Int,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(QuizRadii.pill)
+    Row(
+        modifier =
+            modifier
+                .clip(shape)
+                .background(tint)
+                .border(QuizStrokes.panel, QuizColors.ink, shape)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = score.toString(),
+            fontFamily = RussoOneFamily,
+            fontSize = 18.sp,
+            letterSpacing = 1.sp,
+            color = QuizColors.ink,
+        )
+    }
+}
+
+@Composable
+private fun OptionTile(
+    text: String,
+    modifier: Modifier,
+    tint: Color,
+    highlight: Color?,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val borderColor = highlight ?: QuizColors.ink
+    val borderWidth = if (highlight != null) QuizStrokes.hero else QuizStrokes.panel
+    val backgroundColor =
+        when (highlight) {
+            QuizColors.success -> QuizColors.success.copy(alpha = 0.15f)
+            QuizColors.error -> QuizColors.error.copy(alpha = 0.15f)
+            else -> Color.White
+        }
+    val shape = RoundedCornerShape(QuizRadii.button)
+    Box(
+        modifier =
+            modifier
+                .padding(end = QuizShadows.small, bottom = QuizShadows.small)
+                .clip(shape)
+                .background(backgroundColor)
+                .border(borderWidth, borderColor, shape)
+                .then(
+                    if (enabled) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(horizontal = 12.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = QuizColors.ink.copy(alpha = if (enabled || highlight != null) 1f else 0.6f),
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
+        )
     }
 }
