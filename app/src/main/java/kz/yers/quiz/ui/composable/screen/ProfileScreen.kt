@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -138,7 +141,7 @@ private fun ProfileHeader(
         )
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 60.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButtonHeader(label = "←", onClick = onBack)
+                IconButtonHeader(onClick = onBack)
                 Spacer(Modifier.weight(1f))
                 Text(
                     text = "ПРОФИЛЬ",
@@ -452,10 +455,7 @@ private fun ModeDot(mode: GameMode?) {
 }
 
 @Composable
-private fun IconButtonHeader(
-    label: String,
-    onClick: () -> Unit,
-) {
+private fun IconButtonHeader(onClick: () -> Unit) {
     val shape = RoundedCornerShape(QuizRadii.button)
     Box(
         modifier =
@@ -467,10 +467,11 @@ private fun IconButtonHeader(
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            fontSize = 22.sp,
-            color = Color.White,
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Назад",
+            tint = Color.White,
+            modifier = Modifier.size(22.dp),
         )
     }
 }

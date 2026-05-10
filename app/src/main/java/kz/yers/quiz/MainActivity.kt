@@ -6,14 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kz.yers.quiz.navigation.AppNavHost
 import kz.yers.quiz.ui.theme.QuizAppTheme
 import kz.yers.quiz.ui.theme.QuizColors
@@ -27,6 +26,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         SoundManager.init(this)
         enableEdgeToEdge()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.statusBars())
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
         setContent {
             QuizApp(viewModel)
         }
@@ -44,19 +49,13 @@ fun QuizApp(viewModel: QuizAppViewModel) {
     val a11y by viewModel.a11y
     val tint = mode?.tint ?: QuizColors.tint
     QuizAppTheme(modeTint = tint, a11y = a11y) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            contentWindowInsets = WindowInsets.safeDrawing,
-        ) { paddingValues ->
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(QuizColors.paper)
-                        .padding(paddingValues),
-            ) {
-                AppNavHost(viewModel = viewModel)
-            }
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(QuizColors.paper),
+        ) {
+            AppNavHost(viewModel = viewModel)
         }
     }
 }

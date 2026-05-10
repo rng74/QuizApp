@@ -77,7 +77,7 @@ fun MangaSwitch(
     val tint = LocalModeTint.current
     val a11y = LocalA11y.current
     val trackShape = RoundedCornerShape(14.dp)
-    val targetX = if (checked) 22.dp else 2.dp
+    val targetX = if (checked) 24.dp else 4.dp
     val knobX by animateDpAsState(
         targetValue = targetX,
         animationSpec = spring(stiffness = if (a11y.reduceMotion) Spring.StiffnessHigh * 4 else Spring.StiffnessMedium),
@@ -95,7 +95,7 @@ fun MangaSwitch(
         Box(
             modifier =
                 Modifier
-                    .offset(x = knobX, y = 2.dp)
+                    .offset(x = knobX, y = 4.dp)
                     .size(20.dp)
                     .clip(CircleShape)
                     .background(Color.White)
