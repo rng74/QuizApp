@@ -11,8 +11,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kz.yers.quiz.QuizAppViewModel
 import kz.yers.quiz.model.AppState
+import kz.yers.quiz.ui.composable.screen.DailyChallengeScreen
 import kz.yers.quiz.ui.composable.screen.GameModeMenuScreen
 import kz.yers.quiz.ui.composable.screen.LoadingScreen
+import kz.yers.quiz.ui.composable.screen.OnboardingScreen
+import kz.yers.quiz.ui.composable.screen.ProfileScreen
 import kz.yers.quiz.ui.composable.screen.QuizScreen
 import kz.yers.quiz.ui.composable.screen.ResultScreen
 
@@ -22,14 +25,23 @@ fun AppNavHost(
     navController: NavHostController = rememberNavController(),
 ) {
     val appState by viewModel.appState
+    val needsOnboarding by viewModel.needsOnboarding
+    val onboardingResolved by viewModel.onboardingResolved
 
-    LaunchedEffect(appState) {
+    LaunchedEffect(needsOnboarding, onboardingResolved, appState) {
+        if (!onboardingResolved) return@LaunchedEffect
         val target =
-            when (appState) {
-                AppState.Menu -> Routes.MENU
-                AppState.Loading -> Routes.LOADING
-                is AppState.Quiz -> Routes.QUIZ
-                AppState.Result -> Routes.RESULT
+            when {
+                needsOnboarding -> Routes.ONBOARDING
+                else ->
+                    when (appState) {
+                        AppState.Menu -> Routes.MENU
+                        AppState.Loading -> Routes.LOADING
+                        is AppState.Quiz -> Routes.QUIZ
+                        AppState.Result -> Routes.RESULT
+                        AppState.Daily -> Routes.DAILY
+                        AppState.Profile -> Routes.PROFILE
+                    }
             }
         if (navController.currentDestination?.route != target) {
             navController.navigate(target) {
@@ -44,6 +56,9 @@ fun AppNavHost(
         startDestination = Routes.MENU,
         modifier = Modifier.fillMaxSize(),
     ) {
+        composable(Routes.ONBOARDING) {
+            OnboardingScreen(onFinish = viewModel::completeOnboarding)
+        }
         composable(Routes.MENU) {
             val highScore by viewModel.highScore
             val isPosterEnabled by viewModel.isPosterEnabled
@@ -52,6 +67,8 @@ fun AppNavHost(
                 isPosterEnabled = isPosterEnabled,
                 onPosterToggle = viewModel::setPosterEnabled,
                 onGameModeSelected = viewModel::startQuiz,
+                onOpenDaily = viewModel::openDaily,
+                onOpenProfile = viewModel::openProfile,
             )
         }
         composable(Routes.LOADING) {
@@ -85,6 +102,21 @@ fun AppNavHost(
                 needToAskReview = viewModel.tries == 3,
                 onReviewSuccess = {},
                 onRestart = viewModel::resetQuiz,
+            )
+        }
+        composable(Routes.DAILY) {
+            val state by viewModel.dailyState
+            DailyChallengeScreen(
+                state = state,
+                onBack = viewModel::backToMenu,
+                onPlay = viewModel::startDailyRun,
+            )
+        }
+        composable(Routes.PROFILE) {
+            val state by viewModel.profileState
+            ProfileScreen(
+                state = state,
+                onBack = viewModel::backToMenu,
             )
         }
     }

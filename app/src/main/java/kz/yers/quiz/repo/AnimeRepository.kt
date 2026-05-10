@@ -48,6 +48,20 @@ class AnimeRepository(
         return generateQuizQuestions(animeList, numberOfQuestions, rating, false)
     }
 
+    /**
+     * Deterministic single track for the Daily Challenge — same epochDay always picks the same
+     * track, distinct anime (by `titleRu`) for a stable pool. Stub for the v2 backend endpoint.
+     */
+    suspend fun getDailyQuestion(epochDay: Long): QuizQuestion? {
+        if (animeList.isEmpty()) loadAnimeData()
+        val pool = animeList.filter { it.titleRu.isNotBlank() }.distinctBy { it.titleRu }
+        if (pool.isEmpty()) return null
+        val index = (epochDay.mod(pool.size.toLong())).toInt()
+        val correct = pool[index]
+        val options = generateOptions(correct)
+        return QuizQuestion(correctAnswer = correct, options = options)
+    }
+
     private suspend fun loadAnimeData() {
         withContext(Dispatchers.IO) {
             val jsonString =

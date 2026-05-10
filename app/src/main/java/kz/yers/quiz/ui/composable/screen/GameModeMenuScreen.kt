@@ -50,6 +50,8 @@ fun GameModeMenuScreen(
     onGameModeSelected: (GameMode) -> Unit,
     isPosterEnabled: Boolean,
     onPosterToggle: (Boolean) -> Unit,
+    onOpenDaily: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
 ) {
     val withPosterStr = stringResource(R.string.with_poster)
     val withoutPosterStr = stringResource(R.string.without_poster)
@@ -65,9 +67,17 @@ fun GameModeMenuScreen(
                 .fillMaxSize()
                 .background(QuizColors.paper)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Spacer(Modifier.weight(1f))
+            ProfileIconButton(onClick = onOpenProfile)
+        }
+        Spacer(Modifier.height(8.dp))
         ImpactText(
             text = "АНИМЕ КВИЗ!",
             style = MaterialTheme.typography.displayMedium,
@@ -80,7 +90,10 @@ fun GameModeMenuScreen(
             fontSize = 13.sp,
             letterSpacing = 1.sp,
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
+
+        DailyEntryCard(onClick = onOpenDaily)
+        Spacer(Modifier.height(20.dp))
 
         MangaPanel(
             modifier = Modifier.fillMaxWidth(),
@@ -229,6 +242,83 @@ private fun ModeCard(
                 lineHeight = 14.sp,
                 fontWeight = FontWeight.Normal,
                 color = QuizColors.ink.copy(alpha = 0.6f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileIconButton(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(QuizRadii.button)
+    Box(
+        modifier =
+            Modifier
+                .size(40.dp)
+                .clip(shape)
+                .background(Color.White)
+                .border(QuizStrokes.regular, QuizColors.ink, shape)
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "ПРО",
+            fontFamily = RussoOneFamily,
+            fontSize = 11.sp,
+            letterSpacing = 1.sp,
+            color = QuizColors.ink,
+        )
+    }
+}
+
+@Composable
+private fun DailyEntryCard(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(QuizRadii.button)
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(end = QuizShadows.medium, bottom = QuizShadows.medium)
+                .drawBehind {
+                    val o = QuizShadows.medium.toPx()
+                    val r = QuizRadii.button.toPx()
+                    drawRoundRect(
+                        color = QuizColors.ink,
+                        topLeft = Offset(o, o),
+                        size = Size(size.width, size.height),
+                        cornerRadius = CornerRadius(r, r),
+                    )
+                }
+                .clip(shape)
+                .background(
+                    androidx.compose.ui.graphics.Brush.linearGradient(
+                        colors = listOf(Color(0xFFFFD35B), QuizColors.tint),
+                    ),
+                )
+                .border(QuizStrokes.panel, QuizColors.ink, shape)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "ДНЕВНОЙ ВЫЗОВ",
+                    fontFamily = BangersFamily,
+                    fontSize = 22.sp,
+                    color = QuizColors.ink,
+                    letterSpacing = 1.sp,
+                )
+                Text(
+                    text = "Один трек на всех · 2× очки",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = QuizColors.ink.copy(alpha = 0.75f),
+                )
+            }
+            Text(
+                text = "→",
+                fontFamily = BangersFamily,
+                fontSize = 28.sp,
+                color = QuizColors.ink,
             )
         }
     }

@@ -13,19 +13,30 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kz.yers.quiz.data.local.dao.DailyAttemptDao
 import kz.yers.quiz.data.local.dao.RunHistoryDao
+import kz.yers.quiz.data.local.entity.DailyAttemptEntity
 import kz.yers.quiz.data.local.entity.RunHistoryEntity
 import kz.yers.quiz.data.prefs.UserPrefs
+import kz.yers.quiz.model.Achievements
 import kz.yers.quiz.model.AppState
+import kz.yers.quiz.model.DailyAttemptSummary
+import kz.yers.quiz.model.DailyState
 import kz.yers.quiz.model.GameMode
+import kz.yers.quiz.model.ProfileState
 import kz.yers.quiz.model.QuizQuestion
+import kz.yers.quiz.model.RecentGame
+import kz.yers.quiz.model.UserStats
 import kz.yers.quiz.repo.AnimeRepository
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class QuizAppViewModel(
     private val repository: AnimeRepository,
     private val runHistoryDao: RunHistoryDao,
+    private val dailyAttemptDao: DailyAttemptDao,
     private val userPrefs: UserPrefs,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
@@ -57,18 +68,161 @@ class QuizAppViewModel(
 
     val isNewRecord = mutableStateOf(false)
 
+    val needsOnboarding = mutableStateOf(false)
+    val onboardingResolved = mutableStateOf(false)
+
+    val dailyState = mutableStateOf(DailyState())
+    val profileState = mutableStateOf(ProfileState())
+
+    private var isDailyRun = false
+
     init {
         _highScore.intValue = repository.getHighScore()
         viewModelScope.launch {
             _isPosterEnabled.value = userPrefs.posterEnabled.first()
+            val tutorialDone = userPrefs.tutorialCompleted.first()
+            needsOnboarding.value = !tutorialDone
+            onboardingResolved.value = true
         }
+    }
+
+    fun completeOnboarding() {
+        needsOnboarding.value = false
+        viewModelScope.launch { userPrefs.setTutorialCompleted(true) }
+    }
+
+    fun openDaily() {
+        viewModelScope.launch {
+            refreshDailyState()
+            appState.value = AppState.Daily
+        }
+    }
+
+    fun openProfile() {
+        viewModelScope.launch {
+            refreshProfileState()
+            appState.value = AppState.Profile
+        }
+    }
+
+    fun backToMenu() {
+        appState.value = AppState.Menu
+    }
+
+    private suspend fun refreshDailyState() {
+        val today = LocalDate.now(ZoneId.systemDefault())
+        val epochDay = today.toEpochDay()
+        val attempt =
+            withContext(Dispatchers.IO) { dailyAttemptDao.forDay(epochDay) }
+        val yesterday =
+            withContext(Dispatchers.IO) { dailyAttemptDao.forDay(epochDay - 1) }
+        val streak = userPrefs.currentStreakDays.first()
+        val locale = Locale.forLanguageTag("ru")
+        val dateLabel =
+            today.format(DateTimeFormatter.ofPattern("d MMMM yyyy · EEEE", locale))
+        dailyState.value =
+            DailyState(
+                epochDay = epochDay,
+                today = dateLabel,
+                streakDays = streak,
+                attempt =
+                    attempt?.let {
+                        DailyAttemptSummary(
+                            score = it.score,
+                            correct = it.correct,
+                            durationMs = it.durationMs,
+                        )
+                    },
+                previousTrackTitle = yesterday?.trackTitle,
+            )
+    }
+
+    private suspend fun refreshProfileState() {
+        val totalRuns = withContext(Dispatchers.IO) { runHistoryDao.totalRuns() }
+        val recent = withContext(Dispatchers.IO) { runHistoryDao.recent(10) }
+        val streak = userPrefs.currentStreakDays.first()
+        val name = userPrefs.userName.first()
+        val high = repository.getHighScore()
+        val totalScore = withContext(Dispatchers.IO) { runHistoryDao.totalScore() ?: 0 }
+        val finishedShit = withContext(Dispatchers.IO) { runHistoryDao.runsForMode(GameMode.SHIT.name) > 0 }
+        val anyLightning = recent.any { it.score >= 200 }
+        val accuracy =
+            if (totalRuns == 0) {
+                0
+            } else {
+                ((totalScore.toLong() * 100L) / (totalRuns.toLong() * MAX_SCORE_PER_RUN)).toInt().coerceIn(0, 100)
+            }
+
+        val xp = totalScore
+        val level = (xp / XP_PER_LEVEL).coerceAtLeast(0) + 1
+        val xpForNext = XP_PER_LEVEL
+        val xpInLevel = xp % XP_PER_LEVEL
+
+        val unlocked =
+            Achievements.evaluate(
+                UserStats(
+                    totalGames = totalRuns,
+                    highScore = high,
+                    currentStreakDays = streak,
+                    finishedConnoisseur = finishedShit,
+                    anyLightningRun = anyLightning,
+                ),
+            )
+
+        profileState.value =
+            ProfileState(
+                userName = name,
+                totalGames = totalRuns,
+                currentStreakDays = streak,
+                accuracyPct = accuracy,
+                highScore = high,
+                xp = xpInLevel,
+                level = level,
+                xpForNextLevel = xpForNext,
+                recentGames =
+                    recent.map { row ->
+                        RecentGame(
+                            mode = runCatching { GameMode.valueOf(row.mode) }.getOrNull(),
+                            score = row.score,
+                            createdAt = row.createdAt,
+                        )
+                    },
+                unlockedBadges = unlocked,
+            )
     }
 
     fun startQuiz(gameMode: GameMode) {
         tries += 1
         activeMode.value = gameMode
         runStartElapsedMs = SystemClock.elapsedRealtime()
+        isDailyRun = false
         loadQuizQuestions(gameMode)
+    }
+
+    fun startDailyRun() {
+        viewModelScope.launch {
+            val attempt =
+                withContext(Dispatchers.IO) {
+                    dailyAttemptDao.forDay(LocalDate.now(ZoneId.systemDefault()).toEpochDay())
+                }
+            if (attempt != null) return@launch
+            tries += 1
+            isDailyRun = true
+            activeMode.value = GameMode.NORMAL
+            runStartElapsedMs = SystemClock.elapsedRealtime()
+            appState.value = AppState.Loading
+            val question =
+                withContext(Dispatchers.IO) {
+                    repository.getDailyQuestion(LocalDate.now(ZoneId.systemDefault()).toEpochDay())
+                }
+            if (question == null) {
+                appState.value = AppState.Daily
+                return@launch
+            }
+            quizQuestions = listOf(question)
+            appState.value =
+                AppState.Quiz(currentQuestion = question, currentQuestionIndex = 0)
+        }
     }
 
     private fun loadQuizQuestions(gameMode: GameMode) {
@@ -135,8 +289,9 @@ class QuizAppViewModel(
             return
         }
         if (selectedAnswer == state.currentQuestion.correctAnswer.titleRu) {
-            val points = (timeRemaining.longValue / 1000L).toInt()
-            score.intValue += points
+            val basePoints = (timeRemaining.longValue / 1000L).toInt()
+            val multiplier = if (isDailyRun) 2 else 1
+            score.intValue += basePoints * multiplier
         }
     }
 
@@ -166,18 +321,35 @@ class QuizAppViewModel(
         val durationMs = SystemClock.elapsedRealtime() - runStartElapsedMs
         val previousBest = repository.getHighScore()
         isNewRecord.value = finalScore > previousBest
+        val currentQuestion =
+            (appState.value as? AppState.Quiz)?.currentQuestion
+                ?: quizQuestions.firstOrNull()
+        val isDaily = isDailyRun
+        val correct =
+            currentQuestion != null && userAnswer.value == currentQuestion.correctAnswer.titleRu
 
         if (mode != null) {
             viewModelScope.launch {
                 withContext(Dispatchers.IO) {
                     runHistoryDao.insert(
                         RunHistoryEntity(
-                            mode = mode.name,
+                            mode = if (isDaily) "DAILY" else mode.name,
                             score = finalScore,
                             durationMs = durationMs,
                             dateEpochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
                         ),
                     )
+                    if (isDaily && currentQuestion != null) {
+                        dailyAttemptDao.insert(
+                            DailyAttemptEntity(
+                                epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
+                                score = finalScore,
+                                durationMs = durationMs,
+                                correct = correct,
+                                trackTitle = currentQuestion.correctAnswer.titleRu,
+                            ),
+                        )
+                    }
                 }
                 updateStreak()
             }
@@ -206,5 +378,11 @@ class QuizAppViewModel(
         userAnswer.value = null
         score.intValue = 0
         isNewRecord.value = false
+        isDailyRun = false
+    }
+
+    companion object {
+        private const val MAX_SCORE_PER_RUN = 300
+        private const val XP_PER_LEVEL = 1000
     }
 }

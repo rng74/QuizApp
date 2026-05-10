@@ -19,7 +19,8 @@ val appModule =
         }
         single { AppDatabase.build(androidContext()) }
         single { get<AppDatabase>().runHistoryDao() }
+        single { get<AppDatabase>().dailyAttemptDao() }
         single { UserPrefs(androidContext()) }
         single { AnimeRepository(androidContext(), get(), get()) }
-        viewModel { QuizAppViewModel(get(), get(), get()) }
+        viewModel { QuizAppViewModel(get(), get(), get(), get()) }
     }

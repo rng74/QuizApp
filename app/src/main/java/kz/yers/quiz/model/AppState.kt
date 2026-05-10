@@ -17,4 +17,8 @@ sealed class AppState(
     data object Loading : AppState("loading")
 
     data object Result : AppState("result")
+
+    data object Daily : AppState("daily")
+
+    data object Profile : AppState("profile")
 }
