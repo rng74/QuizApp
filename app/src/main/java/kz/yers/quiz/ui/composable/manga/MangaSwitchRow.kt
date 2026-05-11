@@ -31,6 +31,8 @@ import kz.yers.quiz.model.LocalA11y
 import kz.yers.quiz.ui.theme.LocalModeTint
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizStrokes
+import kz.yers.quiz.ui.theme.bodyFontFamily
+import kz.yers.quiz.ui.theme.bodyScale
 
 @Composable
 fun MangaSwitchRow(
@@ -48,19 +50,23 @@ fun MangaSwitchRow(
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val scale = bodyScale()
+        val family = bodyFontFamily()
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
                 color = QuizColors.ink,
                 fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
+                fontFamily = family,
+                fontSize = (15f * scale).sp,
             )
             if (description != null) {
                 Text(
                     text = description,
                     color = QuizColors.ink.copy(alpha = 0.6f),
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
+                    fontFamily = family,
+                    fontSize = (12f * scale).sp,
+                    lineHeight = (16f * scale).sp,
                 )
             }
         }

@@ -1,6 +1,8 @@
 package kz.yers.quiz.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -9,6 +11,7 @@ import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import kz.yers.quiz.R
+import kz.yers.quiz.model.LocalA11y
 
 private val provider =
     GoogleFont.Provider(
@@ -103,3 +106,14 @@ private fun TextStyle(
     )
 
 val QuizTypography: Typography = buildQuizTypography()
+
+/** A11y-aware body font family — swaps to Lexend when the dyslexia toggle is on. */
+@Composable
+@ReadOnlyComposable
+fun bodyFontFamily(): FontFamily =
+    if (LocalA11y.current.dyslexiaFont) DyslexiaFriendlyFamily else FontFamily.Default
+
+/** A11y-aware body scale — 1.2x when the larger-text toggle is on. */
+@Composable
+@ReadOnlyComposable
+fun bodyScale(): Float = if (LocalA11y.current.largerText) 1.2f else 1f

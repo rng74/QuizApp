@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
@@ -47,7 +48,11 @@ class MainActivity : ComponentActivity() {
 fun QuizApp(viewModel: QuizAppViewModel) {
     val mode by viewModel.activeMode
     val a11y by viewModel.a11y
+    val soundEnabled by viewModel.soundEnabled
     val tint = mode?.tint ?: QuizColors.tint
+    LaunchedEffect(soundEnabled) {
+        SoundManager.enabled = soundEnabled
+    }
     QuizAppTheme(modeTint = tint, a11y = a11y) {
         Box(
             modifier =

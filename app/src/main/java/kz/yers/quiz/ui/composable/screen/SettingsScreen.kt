@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -42,6 +41,8 @@ import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
+import kz.yers.quiz.ui.theme.bodyFontFamily
+import kz.yers.quiz.ui.theme.bodyScale
 import kz.yers.quiz.ui.theme.errorColor
 import kz.yers.quiz.ui.theme.successColor
 
@@ -134,18 +135,22 @@ fun SettingsScreen(
                                 .padding(vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        val scale = bodyScale()
+                        val family = bodyFontFamily()
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Показать обучение снова",
                                 color = QuizColors.ink,
                                 fontWeight = FontWeight.Medium,
-                                fontSize = 15.sp,
+                                fontFamily = family,
+                                fontSize = (15f * scale).sp,
                             )
                             Text(
                                 text = "Покажет 3 экрана с правилами при следующем запуске",
                                 color = QuizColors.ink.copy(alpha = 0.6f),
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
+                                fontFamily = family,
+                                fontSize = (12f * scale).sp,
+                                lineHeight = (16f * scale).sp,
                             )
                         }
                         Text(
@@ -287,6 +292,8 @@ private fun FeedbackChip(
     modifier: Modifier,
 ) {
     val shape = RoundedCornerShape(QuizRadii.button)
+    val scale = bodyScale()
+    val family = bodyFontFamily()
     Row(
         modifier =
             modifier
@@ -296,14 +303,14 @@ private fun FeedbackChip(
                 .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = icon, color = color, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(text = icon, color = color, fontWeight = FontWeight.Bold, fontSize = (14f * scale).sp)
         Spacer(Modifier.size(6.dp))
         Text(
             text = label,
             color = QuizColors.ink,
             fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            style = MaterialTheme.typography.bodyLarge,
+            fontFamily = family,
+            fontSize = (14f * scale).sp,
         )
     }
 }

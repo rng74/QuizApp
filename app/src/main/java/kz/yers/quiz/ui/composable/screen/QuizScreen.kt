@@ -65,6 +65,8 @@ import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
+import kz.yers.quiz.ui.theme.bodyFontFamily
+import kz.yers.quiz.ui.theme.bodyScale
 import kz.yers.quiz.ui.theme.errorColor
 import kz.yers.quiz.ui.theme.successColor
 import kz.yers.quiz.utils.SoundManager
@@ -450,12 +452,14 @@ private fun OptionTile(
                 )
                 Spacer(Modifier.width(6.dp))
             }
+            val scale = bodyScale()
             Text(
                 text = text,
                 color = QuizColors.ink.copy(alpha = if (enabled || highlight != null) 1f else 0.6f),
                 fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
+                fontFamily = bodyFontFamily(),
+                fontSize = (14f * scale).sp,
+                lineHeight = (18f * scale).sp,
             )
         }
     }

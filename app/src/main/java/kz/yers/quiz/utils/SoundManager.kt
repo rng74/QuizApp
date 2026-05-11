@@ -11,6 +11,9 @@ object SoundManager {
     private var soundId: Int = 0
     private var loaded = false
 
+    @Volatile
+    var enabled: Boolean = true
+
     fun init(context: Context) {
         val audioAttributes =
             AudioAttributes
@@ -34,7 +37,7 @@ object SoundManager {
     }
 
     fun playCorrectAnswer() {
-        if (loaded) {
+        if (loaded && enabled) {
             // Add a slight pitch variation for dopamine boost
             val pitch = (0.95f + random() * 0.1f).toFloat() // Random pitch between 0.95 and 1.05
             soundPool?.play(soundId, 1f, 1f, 1, 0, pitch)
