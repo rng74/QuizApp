@@ -5,8 +5,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -89,7 +91,7 @@ fun DuelResultScreen(
         Spacer(Modifier.height(28.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             PlayerScoreCard(
@@ -97,14 +99,14 @@ fun DuelResultScreen(
                 score = state.players[0].score,
                 isWinner = winnerIndex == 0,
                 accent = QuizColors.modeEasy,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             PlayerScoreCard(
                 name = state.players[1].name,
                 score = state.players[1].score,
                 isWinner = winnerIndex == 1,
                 accent = QuizColors.modeShit,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             )
         }
 
@@ -138,12 +140,12 @@ private fun PlayerScoreCard(
 ) {
     MangaPanel(
         modifier = modifier,
-        background = if (isWinner) QuizColors.paper2 else Color.White,
-        shadowOffset = if (isWinner) QuizShadows.large else QuizShadows.medium,
+        background = Color.White,
+        shadowOffset = QuizShadows.medium,
         contentPadding = 16.dp,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
@@ -183,18 +185,23 @@ private fun PlayerScoreCard(
                 fontWeight = FontWeight.Normal,
                 style = BadgeGlyphStyle,
             )
-            if (isWinner) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "★ ПОБЕДИТЕЛЬ",
-                    fontFamily = RussoOneFamily,
-                    fontSize = 10.sp,
-                    letterSpacing = 1.5.sp,
-                    color = QuizColors.streakFire,
-                )
-            } else {
-                Spacer(Modifier.height(4.dp))
-                Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier.height(18.dp).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isWinner) {
+                    Text(
+                        text = "★ ПОБЕДА",
+                        fontFamily = RussoOneFamily,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.5.sp,
+                        color = QuizColors.streakFire,
+                        maxLines = 1,
+                        textAlign = TextAlign.Center,
+                        style = BadgeGlyphStyle,
+                    )
+                }
             }
         }
     }
