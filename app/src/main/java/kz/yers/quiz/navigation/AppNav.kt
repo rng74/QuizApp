@@ -99,6 +99,7 @@ fun AppNavHost(
             ResultScreen(
                 score = viewModel.score.intValue,
                 modeTint = viewModel.activeMode.value?.tint,
+                modeDisplayName = viewModel.activeMode.value?.displayName,
                 isNewRecord = viewModel.isNewRecord.value,
                 needToAskReview = viewModel.tries == 3,
                 onReviewSuccess = {},

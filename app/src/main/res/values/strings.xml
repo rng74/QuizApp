@@ -13,4 +13,8 @@
     <string name="next_question">Следующий вопрос</string>
     <string name="check_results">Проверить результаты</string>
     <string name="loading">Загрузка…</string>
+    <string name="share_button">Поделиться</string>
+    <string name="share_cancel">Отмена</string>
+    <string name="share_caption">Мой счёт в АНИМЕ КВИЗ — %1$d!</string>
+    <string name="share_chooser_title">Поделиться счётом</string>
 </resources>

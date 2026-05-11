@@ -13,8 +13,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,6 +37,7 @@ import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaPanel
+import kz.yers.quiz.ui.composable.share.ShareResultDialog
 import kz.yers.quiz.ui.theme.BangersFamily
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizShadows
@@ -47,8 +51,10 @@ fun ResultScreen(
     onReviewSuccess: () -> Unit,
     onRestart: () -> Unit,
     modeTint: Color? = null,
+    modeDisplayName: String? = null,
 ) {
     val tint = modeTint ?: QuizColors.tint
+    var showShare by remember { mutableStateOf(false) }
     Column(
         modifier =
             Modifier
@@ -120,6 +126,24 @@ fun ResultScreen(
             onClick = onRestart,
             modifier = Modifier.fillMaxWidth(),
             minHeight = 56.dp,
+        )
+        Spacer(Modifier.height(12.dp))
+        MangaButton(
+            label = stringResource(R.string.share_button),
+            variant = MangaButtonVariant.Ghost,
+            onClick = { showShare = true },
+            modifier = Modifier.fillMaxWidth(),
+            minHeight = 48.dp,
+        )
+    }
+
+    if (showShare) {
+        ShareResultDialog(
+            score = score,
+            isNewRecord = isNewRecord,
+            modeTint = tint,
+            modeDisplayName = modeDisplayName,
+            onDismiss = { showShare = false },
         )
     }
 
