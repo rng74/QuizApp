@@ -23,6 +23,8 @@ import kz.yers.quiz.model.Achievements
 import kz.yers.quiz.model.AppState
 import kz.yers.quiz.model.DailyAttemptSummary
 import kz.yers.quiz.model.DailyState
+import kz.yers.quiz.model.DuelPlayer
+import kz.yers.quiz.model.DuelState
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.ProfileState
 import kz.yers.quiz.model.QuizQuestion
@@ -79,6 +81,10 @@ class QuizAppViewModel(
     val soundEnabled = mutableStateOf(true)
 
     private var isDailyRun = false
+    private var isDuelRun = false
+
+    val duelState = mutableStateOf(DuelState())
+    val totalQuestionsInRun = mutableIntStateOf(30)
 
     init {
         _highScore.intValue = repository.getHighScore()
@@ -158,6 +164,62 @@ class QuizAppViewModel(
     }
 
     fun backToMenu() {
+        appState.value = AppState.Menu
+    }
+
+    fun openDuelSetup() {
+        isDuelRun = false
+        duelState.value = DuelState()
+        appState.value = AppState.DuelSetup
+    }
+
+    fun startDuel(
+        playerOneName: String,
+        playerTwoName: String,
+    ) {
+        val name1 = playerOneName.trim().ifBlank { "Игрок 1" }
+        val name2 = playerTwoName.trim().ifBlank { "Игрок 2" }
+        duelState.value =
+            DuelState(
+                players = listOf(DuelPlayer(name1), DuelPlayer(name2)),
+                currentPlayerIndex = 0,
+            )
+        isDuelRun = true
+        isDailyRun = false
+        activeMode.value = GameMode.NORMAL
+        score.intValue = 0
+        userAnswer.value = null
+        appState.value = AppState.Loading
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                quizQuestions = repository.getRandomizedQuestionsGt(DuelState.DUEL_QUESTIONS, 7.5f)
+            }
+            totalQuestionsInRun.intValue = quizQuestions.size.coerceAtLeast(1)
+            appState.value = AppState.DuelHandoff
+        }
+    }
+
+    fun proceedFromDuelHandoff() {
+        if (!isDuelRun || quizQuestions.isEmpty()) {
+            appState.value = AppState.Menu
+            return
+        }
+        score.intValue = 0
+        userAnswer.value = null
+        runStartElapsedMs = SystemClock.elapsedRealtime()
+        appState.value =
+            AppState.Quiz(
+                currentQuestion = quizQuestions[0],
+                currentQuestionIndex = 0,
+            )
+    }
+
+    fun exitDuel() {
+        isDuelRun = false
+        duelState.value = DuelState()
+        score.intValue = 0
+        userAnswer.value = null
+        quizQuestions = emptyList()
         appState.value = AppState.Menu
     }
 
@@ -272,6 +334,7 @@ class QuizAppViewModel(
                 return@launch
             }
             quizQuestions = listOf(question)
+            totalQuestionsInRun.intValue = 1
             appState.value =
                 AppState.Quiz(currentQuestion = question, currentQuestionIndex = 0)
         }
@@ -289,6 +352,7 @@ class QuizAppViewModel(
                         GameMode.SHIT -> repository.getRandomizedQuestionsLte(30, 6f)
                     }
             }
+            totalQuestionsInRun.intValue = quizQuestions.size.coerceAtLeast(1)
             appState.value =
                 AppState.Quiz(
                     currentQuestion = quizQuestions[0],
@@ -371,6 +435,10 @@ class QuizAppViewModel(
         val finalScore = score.intValue
         val mode = activeMode.value
         val durationMs = SystemClock.elapsedRealtime() - runStartElapsedMs
+        if (isDuelRun) {
+            finishDuelTurn(finalScore)
+            return
+        }
         val previousBest = repository.getHighScore()
         isNewRecord.value = finalScore > previousBest
         val currentQuestion =
@@ -431,6 +499,26 @@ class QuizAppViewModel(
         score.intValue = 0
         isNewRecord.value = false
         isDailyRun = false
+    }
+
+    private fun finishDuelTurn(finalScore: Int) {
+        val state = duelState.value
+        val index = state.currentPlayerIndex
+        val answered =
+            (appState.value as? AppState.Quiz)?.let { it.currentQuestionIndex + 1 }
+                ?: state.totalQuestions
+        val updatedPlayers =
+            state.players.toMutableList().also { list ->
+                list[index] = list[index].copy(score = finalScore, answeredQuestions = answered)
+            }
+        if (index == 0) {
+            duelState.value =
+                state.copy(players = updatedPlayers, currentPlayerIndex = 1)
+            appState.value = AppState.DuelHandoff
+        } else {
+            duelState.value = state.copy(players = updatedPlayers)
+            appState.value = AppState.DuelResult
+        }
     }
 
     companion object {

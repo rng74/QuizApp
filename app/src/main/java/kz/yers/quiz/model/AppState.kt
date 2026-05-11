@@ -23,4 +23,10 @@ sealed class AppState(
     data object Profile : AppState("profile")
 
     data object Settings : AppState("settings")
+
+    data object DuelSetup : AppState("duel_setup")
+
+    data object DuelHandoff : AppState("duel_handoff")
+
+    data object DuelResult : AppState("duel_result")
 }

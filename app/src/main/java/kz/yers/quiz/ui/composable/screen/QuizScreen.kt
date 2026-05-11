@@ -86,6 +86,7 @@ fun QuizScreen(
     score: Int,
     streak: Int,
     isPosterEnabled: Boolean,
+    totalQuestions: Int = 30,
     modeTint: Color? = null,
     onAnswerSelected: (String) -> Unit,
     onNextQuestion: () -> Unit,
@@ -204,7 +205,7 @@ fun QuizScreen(
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = "${(streak).coerceAtMost(30)}/30",
+                    text = "${(streak).coerceAtMost(totalQuestions)}/$totalQuestions",
                     fontFamily = RussoOneFamily,
                     fontSize = 13.sp,
                     color = QuizColors.ink.copy(alpha = 0.6f),

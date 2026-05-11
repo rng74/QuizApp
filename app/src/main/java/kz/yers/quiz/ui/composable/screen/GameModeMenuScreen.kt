@@ -75,6 +75,7 @@ fun GameModeMenuScreen(
     onOpenDaily: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenDuel: () -> Unit = {},
 ) {
     val highScoreStr = stringResource(R.string.your_high_score_is, highScore)
     val selectGameModeStr = stringResource(R.string.select_game_mode)
@@ -114,6 +115,8 @@ fun GameModeMenuScreen(
         Spacer(Modifier.height(20.dp))
 
         DailyEntryCard(onClick = onOpenDaily)
+        Spacer(Modifier.height(12.dp))
+        DuelEntryCard(onClick = onOpenDuel)
         Spacer(Modifier.height(20.dp))
 
         MangaPanel(
@@ -288,6 +291,63 @@ private fun MenuIconButton(
             textAlign = TextAlign.Center,
             style = BadgeGlyphStyle,
         )
+    }
+}
+
+@Composable
+private fun DuelEntryCard(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(QuizRadii.button)
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(end = QuizShadows.medium, bottom = QuizShadows.medium)
+                .drawBehind {
+                    val o = QuizShadows.medium.toPx()
+                    val r = QuizRadii.button.toPx()
+                    drawRoundRect(
+                        color = QuizColors.ink,
+                        topLeft = Offset(o, o),
+                        size = Size(size.width, size.height),
+                        cornerRadius = CornerRadius(r, r),
+                    )
+                }
+                .clip(shape)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(QuizColors.hintPurple, QuizColors.accentBlue),
+                    ),
+                )
+                .border(QuizStrokes.panel, QuizColors.ink, shape)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "ДУЭЛЬ",
+                    fontFamily = BangersFamily,
+                    fontSize = 22.sp,
+                    color = Color.White,
+                    letterSpacing = 1.sp,
+                    style = BadgeGlyphStyle,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "Два игрока · одно устройство",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.85f),
+                )
+            }
+            Text(
+                text = "⚔",
+                fontFamily = BangersFamily,
+                fontSize = 26.sp,
+                color = Color.White,
+                style = BadgeGlyphStyle,
+            )
+        }
     }
 }
 

@@ -12,6 +12,9 @@ import androidx.navigation.compose.rememberNavController
 import kz.yers.quiz.QuizAppViewModel
 import kz.yers.quiz.model.AppState
 import kz.yers.quiz.ui.composable.screen.DailyChallengeScreen
+import kz.yers.quiz.ui.composable.screen.DuelHandoffScreen
+import kz.yers.quiz.ui.composable.screen.DuelResultScreen
+import kz.yers.quiz.ui.composable.screen.DuelSetupScreen
 import kz.yers.quiz.ui.composable.screen.GameModeMenuScreen
 import kz.yers.quiz.ui.composable.screen.LoadingScreen
 import kz.yers.quiz.ui.composable.screen.OnboardingScreen
@@ -44,6 +47,9 @@ fun AppNavHost(
                         AppState.Daily -> Routes.DAILY
                         AppState.Profile -> Routes.PROFILE
                         AppState.Settings -> Routes.SETTINGS
+                        AppState.DuelSetup -> Routes.DUEL_SETUP
+                        AppState.DuelHandoff -> Routes.DUEL_HANDOFF
+                        AppState.DuelResult -> Routes.DUEL_RESULT
                     }
             }
         if (navController.currentDestination?.route != target) {
@@ -70,6 +76,7 @@ fun AppNavHost(
                 onOpenDaily = viewModel::openDaily,
                 onOpenProfile = viewModel::openProfile,
                 onOpenSettings = viewModel::openSettings,
+                onOpenDuel = viewModel::openDuelSetup,
             )
         }
         composable(Routes.LOADING) {
@@ -81,6 +88,7 @@ fun AppNavHost(
             val timeRemaining by viewModel.timeRemaining
             val score by viewModel.score
             val isPosterEnabled by viewModel.isPosterEnabled
+            val totalQuestions by viewModel.totalQuestionsInRun
             QuizScreen(
                 question = state.currentQuestion,
                 userAnswer = userAnswer,
@@ -88,6 +96,7 @@ fun AppNavHost(
                 maxTime = viewModel.maxTimePerQuestion,
                 score = score,
                 streak = state.currentQuestionIndex + 1,
+                totalQuestions = totalQuestions,
                 modeTint = viewModel.activeMode.value?.tint,
                 isPosterEnabled = isPosterEnabled,
                 onAnswerSelected = viewModel::submitAnswer,
@@ -119,6 +128,28 @@ fun AppNavHost(
             ProfileScreen(
                 state = state,
                 onBack = viewModel::backToMenu,
+            )
+        }
+        composable(Routes.DUEL_SETUP) {
+            DuelSetupScreen(
+                onStart = viewModel::startDuel,
+                onBack = viewModel::backToMenu,
+            )
+        }
+        composable(Routes.DUEL_HANDOFF) {
+            val state by viewModel.duelState
+            DuelHandoffScreen(
+                state = state,
+                onReady = viewModel::proceedFromDuelHandoff,
+                onExit = viewModel::exitDuel,
+            )
+        }
+        composable(Routes.DUEL_RESULT) {
+            val state by viewModel.duelState
+            DuelResultScreen(
+                state = state,
+                onPlayAgain = viewModel::openDuelSetup,
+                onExit = viewModel::exitDuel,
             )
         }
         composable(Routes.SETTINGS) {

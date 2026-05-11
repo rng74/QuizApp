@@ -9,4 +9,7 @@ object Routes {
     const val DAILY = "daily"
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
+    const val DUEL_SETUP = "duel_setup"
+    const val DUEL_HANDOFF = "duel_handoff"
+    const val DUEL_RESULT = "duel_result"
 }
