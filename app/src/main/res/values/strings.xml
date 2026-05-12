@@ -6,7 +6,7 @@
     <string name="select_game_mode">Выберите режим игры</string>
     <string name="quiz_finished">Викторина завершена!</string>
     <string name="your_score">Ваш результат: %1$s</string>
-    <string name="play_again">Играть снова</string>
+    <string name="back_to_menu">В главное меню</string>
     <string name="score">Счёт: %1$s</string>
     <string name="correct">Верно!</string>
     <string name="incorrect">Неправильно… Еще повезет!</string>

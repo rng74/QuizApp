@@ -34,6 +34,7 @@ import kz.yers.quiz.BuildConfig
 import kz.yers.quiz.model.A11yState
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
+import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.composable.manga.MangaSwitchRow
 import kz.yers.quiz.ui.theme.QuizColors
@@ -153,10 +154,11 @@ fun SettingsScreen(
                                 lineHeight = (16f * scale).sp,
                             )
                         }
-                        Text(
-                            text = "→",
-                            fontSize = 20.sp,
-                            color = QuizColors.ink,
+                        Icon(
+                            imageVector = MangaIcons.ChevronRight,
+                            contentDescription = null,
+                            tint = QuizColors.ink,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                     Divider()

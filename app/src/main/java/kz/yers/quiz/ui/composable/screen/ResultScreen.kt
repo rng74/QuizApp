@@ -121,7 +121,7 @@ fun ResultScreen(
         Spacer(Modifier.height(40.dp))
 
         MangaButton(
-            label = stringResource(R.string.play_again),
+            label = stringResource(R.string.back_to_menu),
             variant = MangaButtonVariant.Tint,
             onClick = onRestart,
             modifier = Modifier.fillMaxWidth(),

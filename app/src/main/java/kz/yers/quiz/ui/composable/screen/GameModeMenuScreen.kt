@@ -1,5 +1,6 @@
 package kz.yers.quiz.ui.composable.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,8 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +33,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import kz.yers.quiz.R
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.ui.composable.manga.ImpactText
+import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.theme.BangersFamily
 import kz.yers.quiz.ui.theme.QuizColors
@@ -95,8 +97,8 @@ fun GameModeMenuScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Spacer(Modifier.weight(1f))
-            MenuIconButton(label = "ПРО", onClick = onOpenProfile)
-            MenuIconButton(label = "⚙", onClick = onOpenSettings, fontSize = 18.sp)
+            MenuIconButton(icon = MangaIcons.Profile, contentDescription = "Профиль", onClick = onOpenProfile)
+            MenuIconButton(icon = MangaIcons.Settings, contentDescription = "Настройки", onClick = onOpenSettings)
         }
         Spacer(Modifier.height(8.dp))
         ImpactText(
@@ -156,10 +158,10 @@ fun GameModeMenuScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.LocalFireDepartment,
+                        imageVector = MangaIcons.Flame,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(30.dp),
                     )
                 }
             }
@@ -220,32 +222,18 @@ private fun ModeCard(
                         size = Size(size.width, size.height),
                         cornerRadius = CornerRadius(r, r),
                     )
-                }
-                .clip(shape)
+                }.clip(shape)
                 .background(Color.White)
                 .border(QuizStrokes.panel, QuizColors.ink, shape)
                 .clickable(onClick = onClick)
                 .padding(14.dp),
     ) {
         Column {
-            Box(
-                modifier =
-                    Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(mode.tint)
-                        .border(QuizStrokes.panel, QuizColors.ink, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = mode.shortLabel.first().uppercase(),
-                    fontFamily = BangersFamily,
-                    fontSize = 22.sp,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    style = BadgeGlyphStyle,
-                )
-            }
+            Image(
+                painter = painterResource(id = modeIconRes(mode)),
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = mode.shortLabel.uppercase(),
@@ -267,9 +255,9 @@ private fun ModeCard(
 
 @Composable
 private fun MenuIconButton(
-    label: String,
+    icon: ImageVector,
+    contentDescription: String?,
     onClick: () -> Unit,
-    fontSize: androidx.compose.ui.unit.TextUnit = 11.sp,
 ) {
     val shape = RoundedCornerShape(QuizRadii.button)
     Box(
@@ -282,14 +270,11 @@ private fun MenuIconButton(
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            fontFamily = RussoOneFamily,
-            fontSize = fontSize,
-            letterSpacing = 1.sp,
-            color = QuizColors.ink,
-            textAlign = TextAlign.Center,
-            style = BadgeGlyphStyle,
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = QuizColors.ink,
+            modifier = Modifier.size(22.dp),
         )
     }
 }
@@ -311,14 +296,12 @@ private fun DuelEntryCard(onClick: () -> Unit) {
                         size = Size(size.width, size.height),
                         cornerRadius = CornerRadius(r, r),
                     )
-                }
-                .clip(shape)
+                }.clip(shape)
                 .background(
                     Brush.linearGradient(
                         colors = listOf(QuizColors.hintPurple, QuizColors.accentBlue),
                     ),
-                )
-                .border(QuizStrokes.panel, QuizColors.ink, shape)
+                ).border(QuizStrokes.panel, QuizColors.ink, shape)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
@@ -340,12 +323,11 @@ private fun DuelEntryCard(onClick: () -> Unit) {
                     color = Color.White.copy(alpha = 0.85f),
                 )
             }
-            Text(
-                text = "⚔",
-                fontFamily = BangersFamily,
-                fontSize = 26.sp,
-                color = Color.White,
-                style = BadgeGlyphStyle,
+            Icon(
+                imageVector = MangaIcons.Swords,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(28.dp),
             )
         }
     }
@@ -368,14 +350,12 @@ private fun DailyEntryCard(onClick: () -> Unit) {
                         size = Size(size.width, size.height),
                         cornerRadius = CornerRadius(r, r),
                     )
-                }
-                .clip(shape)
+                }.clip(shape)
                 .background(
                     Brush.linearGradient(
                         colors = listOf(Color(0xFFFFD35B), QuizColors.tint),
                     ),
-                )
-                .border(QuizStrokes.panel, QuizColors.ink, shape)
+                ).border(QuizStrokes.panel, QuizColors.ink, shape)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
@@ -397,13 +377,20 @@ private fun DailyEntryCard(onClick: () -> Unit) {
                     color = QuizColors.ink.copy(alpha = 0.75f),
                 )
             }
-            Text(
-                text = "→",
-                fontFamily = BangersFamily,
-                fontSize = 28.sp,
-                color = QuizColors.ink,
-                style = BadgeGlyphStyle,
+            Icon(
+                imageVector = MangaIcons.ChevronRight,
+                contentDescription = null,
+                tint = QuizColors.ink,
+                modifier = Modifier.size(28.dp),
             )
         }
     }
 }
+
+private fun modeIconRes(mode: GameMode): Int =
+    when (mode) {
+        GameMode.EASY -> R.drawable.easy_icon
+        GameMode.NORMAL -> R.drawable.normal_icon
+        GameMode.RANDOM -> R.drawable.random_icon
+        GameMode.SHIT -> R.drawable.hardcore_icon
+    }

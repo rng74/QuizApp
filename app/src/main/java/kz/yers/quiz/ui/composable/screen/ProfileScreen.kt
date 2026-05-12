@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +44,9 @@ import kz.yers.quiz.model.AchievementVariant
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.ProfileState
 import kz.yers.quiz.model.RecentGame
+import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.SpeedLines
+import kz.yers.quiz.ui.composable.manga.icon
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
@@ -254,7 +257,13 @@ private fun ProfileStatsRow(
 ) {
     Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         StatTile("игр", state.totalGames.toString(), modifier = Modifier.weight(1f))
-        StatTile("серия", "${state.currentStreakDays}🔥", modifier = Modifier.weight(1f))
+        StatTile(
+            label = "серия",
+            value = state.currentStreakDays.toString(),
+            modifier = Modifier.weight(1f),
+            trailingIcon = MangaIcons.Flame,
+            trailingIconTint = QuizColors.streakFire,
+        )
         StatTile("рекорд", state.highScore.toString(), modifier = Modifier.weight(1f))
     }
 }
@@ -264,6 +273,8 @@ private fun StatTile(
     label: String,
     value: String,
     modifier: Modifier,
+    trailingIcon: ImageVector? = null,
+    trailingIconTint: Color = QuizColors.ink,
 ) {
     val shape = RoundedCornerShape(QuizRadii.card)
     Box(
@@ -286,12 +297,23 @@ private fun StatTile(
                 .padding(10.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = value,
-                fontFamily = RussoOneFamily,
-                fontSize = 22.sp,
-                color = QuizColors.ink,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = value,
+                    fontFamily = RussoOneFamily,
+                    fontSize = 22.sp,
+                    color = QuizColors.ink,
+                )
+                if (trailingIcon != null) {
+                    Spacer(Modifier.size(4.dp))
+                    Icon(
+                        imageVector = trailingIcon,
+                        contentDescription = null,
+                        tint = trailingIconTint,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
             Text(
                 text = label.uppercase(),
                 fontSize = 10.sp,
@@ -316,12 +338,11 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun BadgeGrid(unlocked: Set<AchievementId>) {
     val all = AchievementId.entries
-    val padded = all + List(24 - all.size) { null } // 24 slots total.
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        padded.chunked(4).forEach { row ->
+        all.chunked(4).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 row.forEach { id ->
-                    Badge(id = id, unlocked = id != null && id in unlocked, modifier = Modifier.weight(1f))
+                    Badge(id = id, unlocked = id in unlocked, modifier = Modifier.weight(1f))
                 }
                 repeat(4 - row.size) {
                     Spacer(Modifier.weight(1f))
@@ -333,23 +354,22 @@ private fun BadgeGrid(unlocked: Set<AchievementId>) {
 
 @Composable
 private fun Badge(
-    id: AchievementId?,
+    id: AchievementId,
     unlocked: Boolean,
     modifier: Modifier,
 ) {
     val shape = RoundedCornerShape(QuizRadii.button)
     val (bg, content) =
-        when {
-            id == null -> QuizColors.paper2 to QuizColors.ink.copy(alpha = 0.4f)
-            !unlocked -> QuizColors.paper2 to QuizColors.ink.copy(alpha = 0.4f)
-            else ->
-                when (id.variant) {
-                    AchievementVariant.Gold -> Color(0xFFFFC933) to Color.White
-                    AchievementVariant.Silver -> Color(0xFFB0B0B0) to Color.White
-                    AchievementVariant.Fire -> QuizColors.streakFire to Color.White
-                    AchievementVariant.Purple -> QuizColors.hintPurple to Color.White
-                    AchievementVariant.Regular -> Color.White to QuizColors.ink
-                }
+        if (!unlocked) {
+            QuizColors.paper2 to QuizColors.ink.copy(alpha = 0.35f)
+        } else {
+            when (id.variant) {
+                AchievementVariant.Gold -> Color(0xFFFFC933) to Color.White
+                AchievementVariant.Silver -> Color(0xFFB0B0B0) to Color.White
+                AchievementVariant.Fire -> QuizColors.streakFire to Color.White
+                AchievementVariant.Purple -> QuizColors.hintPurple to Color.White
+                AchievementVariant.Regular -> Color.White to QuizColors.ink
+            }
         }
     Box(
         modifier =
@@ -370,17 +390,18 @@ private fun Badge(
                 .border(QuizStrokes.regular, QuizColors.ink, shape),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = if (id == null || !unlocked) "🔒" else "★",
-                fontSize = 18.sp,
-                color = content,
+            Icon(
+                imageVector = id.icon,
+                contentDescription = null,
+                tint = content,
+                modifier = Modifier.size(22.dp),
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
-                text = id?.title ?: "—",
+                text = id.title,
                 fontFamily = RussoOneFamily,
                 fontSize = 9.sp,
                 letterSpacing = 0.5.sp,
@@ -433,7 +454,7 @@ private fun RecentRow(row: RecentGame) {
 private fun ModeDot(mode: GameMode?) {
     val shape = RoundedCornerShape(QuizRadii.card)
     val color = mode?.tint ?: QuizColors.tint
-    val letter = mode?.shortLabel?.firstOrNull()?.uppercaseChar()?.toString() ?: "Д"
+    val icon = mode?.icon ?: MangaIcons.ModeEasy
     Box(
         modifier =
             Modifier
@@ -443,13 +464,11 @@ private fun ModeDot(mode: GameMode?) {
                 .border(QuizStrokes.regular, QuizColors.ink, shape),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = letter,
-            color = Color.White,
-            fontFamily = RussoOneFamily,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center,
-            style = BadgeGlyphStyle,
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(18.dp),
         )
     }
 }
