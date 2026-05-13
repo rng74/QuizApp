@@ -2,12 +2,15 @@ package kz.yers.quiz.ui.composable.screen
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,9 +31,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,7 +44,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -96,6 +105,7 @@ fun QuizScreen(
 ) {
     val tint = modeTint ?: QuizColors.tint
     val a11y = LocalA11y.current
+    val haptic = LocalHapticFeedback.current
     val correctSurface = successColor()
     val errorSurface = errorColor()
     val timerProgress by remember(timeRemaining) {
@@ -121,10 +131,28 @@ fun QuizScreen(
     val isCorrect = userAnswer != null && userAnswer == question.correctAnswer.titleRu
     val isWrong = userAnswer != null && !isCorrect
 
+    // Stable feedback used by the big overlay. Captured on the userAnswer transition so a
+    // `question` change before `userAnswer` clears (during onNextQuestion) doesn't flip the
+    // displayed result. The SideEffect-backed fallback keeps the last value visible while the
+    // exit animation runs after userAnswer becomes null.
+    val capturedPick: Boolean? =
+        remember(userAnswer) {
+            if (userAnswer != null) userAnswer == question.correctAnswer.titleRu else null
+        }
+    var lastPickCorrect by remember { mutableStateOf(false) }
+    SideEffect {
+        if (capturedPick != null) lastPickCorrect = capturedPick
+    }
+    val overlayCorrect = capturedPick ?: lastPickCorrect
+
     LaunchedEffect(userAnswer) {
         if (isCorrect) {
             SoundManager.playCorrectAnswer()
+            if (!a11y.reduceMotion) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
         } else if (isWrong && !a11y.reduceMotion) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             shakeAnim.snapTo(0f)
             shakeAnim.animateTo(
                 targetValue = 0f,
@@ -178,7 +206,8 @@ fun QuizScreen(
                         override fun onParticleSystemEnded(
                             system: PartySystem,
                             activeSystems: Int,
-                        ) {}
+                        ) {
+                        }
                     },
             )
         }
@@ -219,7 +248,10 @@ fun QuizScreen(
 
             // Poster panel.
             MangaPanel(
-                modifier = Modifier.fillMaxWidth().height(imageHeight),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(imageHeight),
                 contentPadding = 0.dp,
                 shadowOffset = QuizShadows.medium,
                 background = QuizColors.paper2,
@@ -285,7 +317,10 @@ fun QuizScreen(
 
                         OptionTile(
                             text = option,
-                            modifier = Modifier.weight(1f).then(selectionShake),
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .then(selectionShake),
                             highlight =
                                 when {
                                     optionCorrect -> correctSurface
@@ -332,7 +367,14 @@ fun QuizScreen(
                 fadeIn(animationSpec = tween(120))
             } else {
                 fadeIn(animationSpec = tween(180)) +
-                    scaleIn(initialScale = 0.6f, animationSpec = tween(280))
+                    scaleIn(
+                        initialScale = 0.4f,
+                        animationSpec =
+                            spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                    )
             }
         val exit =
             if (a11y.reduceMotion) {
@@ -345,13 +387,24 @@ fun QuizScreen(
             visible = userAnswer != null,
             enter = enter,
             exit = exit,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 96.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 80.dp),
         ) {
-            ImpactText(
-                text = if (isCorrect) "✓ ВЕРНО!" else "✕ МИМО!",
-                style = MaterialTheme.typography.displayLarge,
-                tintColor = if (isCorrect) correctSurface else errorSurface,
-            )
+            Box(contentAlignment = Alignment.Center) {
+                Image(
+                    modifier = Modifier.height(180.dp).fillMaxWidth().padding(top = 16.dp),
+                    contentScale = ContentScale.FillWidth,
+                    painter = painterResource(id = R.drawable.burst),
+                    contentDescription = null,
+                )
+                ImpactText(
+                    text = if (overlayCorrect) "ВЕРНО!" else "МИМО!",
+                    style = MaterialTheme.typography.displayLarge,
+                    tintColor = if (overlayCorrect) correctSurface else errorSurface,
+                )
+            }
         }
     }
 }
@@ -438,8 +491,7 @@ private fun OptionTile(
                     } else {
                         Modifier
                     },
-                )
-                .padding(horizontal = 12.dp, vertical = 14.dp),
+                ).padding(horizontal = 12.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -448,9 +500,9 @@ private fun OptionTile(
                     text = iconGlyph,
                     color = highlight ?: QuizColors.ink,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontSize = 22.sp,
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
             }
             val scale = bodyScale()
             Text(

@@ -53,7 +53,14 @@ fun ResultScreen(
     modeTint: Color? = null,
     modeDisplayName: String? = null,
 ) {
-    val tint = modeTint ?: QuizColors.tint
+    // Freeze the result snapshot on first composition. onRestart resets the underlying state
+    // (score → 0, isNewRecord → false) before navigation completes, which would otherwise
+    // flash a zeroed result. The screen is short-lived so freezing here is safe.
+    val frozenScore = remember { score }
+    val frozenIsNewRecord = remember { isNewRecord }
+    val frozenTint = remember { modeTint ?: QuizColors.tint }
+    val frozenModeName = remember { modeDisplayName }
+    val tint = frozenTint
     var showShare by remember { mutableStateOf(false) }
     Column(
         modifier =
@@ -71,7 +78,7 @@ fun ResultScreen(
         )
         Spacer(Modifier.height(24.dp))
 
-        if (isNewRecord) {
+        if (frozenIsNewRecord) {
             MangaPanel(
                 modifier = Modifier.fillMaxWidth(),
                 background = QuizColors.streakFire,
@@ -109,7 +116,7 @@ fun ResultScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = score.toString(),
+                    text = frozenScore.toString(),
                     fontFamily = BangersFamily,
                     fontSize = 72.sp,
                     color = QuizColors.accentBlue,
@@ -139,10 +146,10 @@ fun ResultScreen(
 
     if (showShare) {
         ShareResultDialog(
-            score = score,
-            isNewRecord = isNewRecord,
+            score = frozenScore,
+            isNewRecord = frozenIsNewRecord,
             modeTint = tint,
-            modeDisplayName = modeDisplayName,
+            modeDisplayName = frozenModeName,
             onDismiss = { showShare = false },
         )
     }
