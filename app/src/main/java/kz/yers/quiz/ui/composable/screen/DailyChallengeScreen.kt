@@ -44,6 +44,7 @@ import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaChip
 import kz.yers.quiz.ui.composable.manga.MangaChipVariant
+import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.SpeechBubble
 import kz.yers.quiz.ui.composable.manga.SpeedLines
 import kz.yers.quiz.ui.theme.BangersFamily
@@ -70,7 +71,9 @@ fun DailyChallengeScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+            contentPadding =
+                androidx.compose.foundation.layout
+                    .PaddingValues(0.dp),
         ) {
             item {
                 DailyAppBar(onBack = onBack)
@@ -110,8 +113,7 @@ private fun DailyAppBar(onBack: () -> Unit) {
                         end = Offset(size.width, size.height - s / 2f),
                         strokeWidth = s,
                     )
-                }
-                .padding(horizontal = 14.dp),
+                }.padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -170,14 +172,12 @@ private fun DailyHero(
                         size = Size(size.width, size.height),
                         cornerRadius = CornerRadius(r, r),
                     )
-                }
-                .clip(shape)
+                }.clip(shape)
                 .background(
                     Brush.linearGradient(
                         colors = listOf(Color(0xFFFFD35B), QuizColors.tint),
                     ),
-                )
-                .border(QuizStrokes.panel, QuizColors.ink, shape),
+                ).border(QuizStrokes.panel, QuizColors.ink, shape),
     ) {
         SpeedLines(
             modifier = Modifier.fillMaxSize(),
@@ -235,8 +235,29 @@ private fun DailyHero(
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MangaChip(label = "⏱ ~30 сек")
-                    MangaChip(label = "★ 2× очки", variant = MangaChipVariant.Red)
+                    MangaChip(
+                        label = "~30 сек",
+                        leadingIcon = {
+                            Icon(
+                                imageVector = MangaIcons.Clock,
+                                contentDescription = null,
+                                tint = QuizColors.ink,
+                                modifier = Modifier.size(12.dp),
+                            )
+                        },
+                    )
+                    MangaChip(
+                        label = "2× очки",
+                        variant = MangaChipVariant.Red,
+                        leadingIcon = {
+                            Icon(
+                                imageVector = MangaIcons.Star,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(12.dp),
+                            )
+                        },
+                    )
                 }
             }
         }
@@ -308,7 +329,13 @@ private fun CountdownCell(
 @Composable
 private fun StreakStrip(streakDays: Int) {
     val labels = listOf("пн", "вт", "ср", "чт", "пт", "сб", "вс")
-    val today = ((java.time.LocalDate.now().dayOfWeek.value + 6) % 7) // monday=0
+    val today = (
+        (
+            java.time.LocalDate
+                .now()
+                .dayOfWeek.value + 6
+        ) % 7
+    ) // monday=0
     val doneCount = streakDays.coerceIn(0, 7)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -335,13 +362,25 @@ private fun StreakStrip(streakDays: Int) {
         }
         if (streakDays in 1..6) {
             val nextBonusInDays = (7 - streakDays).coerceAtLeast(1)
-            Text(
-                text = "Через $nextBonusInDays дн. — бонус +50 монет 🎁",
-                fontSize = 12.sp,
-                color = QuizColors.ink.copy(alpha = 0.6f),
-                textAlign = TextAlign.Center,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-            )
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Через $nextBonusInDays дн. — бонус +50 монет",
+                    fontSize = 12.sp,
+                    color = QuizColors.ink.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.size(6.dp))
+                Icon(
+                    imageVector = MangaIcons.Star,
+                    contentDescription = null,
+                    tint = QuizColors.streakFire,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
     }
 }
@@ -387,8 +426,7 @@ private fun StatPanel(
                         size = Size(size.width, size.height),
                         cornerRadius = CornerRadius(r, r),
                     )
-                }
-                .clip(shape)
+                }.clip(shape)
                 .background(Color.White)
                 .border(QuizStrokes.panel, QuizColors.ink, shape)
                 .padding(10.dp),

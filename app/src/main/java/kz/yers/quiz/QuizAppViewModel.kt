@@ -310,6 +310,12 @@ class QuizAppViewModel(
         activeMode.value = gameMode
         runStartElapsedMs = SystemClock.elapsedRealtime()
         isDailyRun = false
+        // Per-run reset — necessary for the "Play again" flow which calls startQuiz directly
+        // from ResultScreen without going through resetQuiz. Idempotent for the menu flow
+        // (resetQuiz already cleared these on the way out).
+        score.intValue = 0
+        userAnswer.value = null
+        isNewRecord.value = false
         loadQuizQuestions(gameMode)
     }
 

@@ -1,14 +1,19 @@
 package kz.yers.quiz.ui.composable.screen
 
 import android.app.Activity
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,8 +25,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,6 +44,7 @@ import kz.yers.quiz.R
 import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
+import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.composable.share.ShareResultDialog
 import kz.yers.quiz.ui.theme.BangersFamily
@@ -52,6 +61,7 @@ fun ResultScreen(
     onRestart: () -> Unit,
     modeTint: Color? = null,
     modeDisplayName: String? = null,
+    onPlayAgain: () -> Unit = onRestart,
 ) {
     // Freeze the result snapshot on first composition. onRestart resets the underlying state
     // (score → 0, isNewRecord → false) before navigation completes, which would otherwise
@@ -80,20 +90,53 @@ fun ResultScreen(
 
         if (frozenIsNewRecord) {
             MangaPanel(
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .rotate(-3f),
                 background = QuizColors.streakFire,
                 shadowOffset = QuizShadows.medium,
                 contentPadding = 12.dp,
             ) {
-                Text(
-                    text = "НОВЫЙ РЕКОРД",
+                Box(
                     modifier = Modifier.fillMaxWidth(),
-                    color = Color.White,
-                    fontFamily = RussoOneFamily,
-                    fontSize = 16.sp,
-                    letterSpacing = 2.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        modifier =
+                            Modifier
+                                .height(180.dp)
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                        contentScale = ContentScale.FillWidth,
+                        painter = painterResource(id = R.drawable.burst),
+                        contentDescription = null,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = MangaIcons.Trophy,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Text(
+                            text = "НОВЫЙ РЕКОРД",
+                            color = Color.White,
+                            fontFamily = RussoOneFamily,
+                            fontSize = 16.sp,
+                            letterSpacing = 2.sp,
+                        )
+                        Icon(
+                            imageVector = MangaIcons.Star,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(20.dp))
         }
@@ -128,19 +171,27 @@ fun ResultScreen(
         Spacer(Modifier.height(40.dp))
 
         MangaButton(
-            label = stringResource(R.string.back_to_menu),
+            label = stringResource(R.string.play_again).uppercase(),
             variant = MangaButtonVariant.Tint,
-            onClick = onRestart,
+            onClick = onPlayAgain,
             modifier = Modifier.fillMaxWidth(),
             minHeight = 56.dp,
         )
         Spacer(Modifier.height(12.dp))
         MangaButton(
-            label = stringResource(R.string.share_button),
+            label = stringResource(R.string.back_to_menu).uppercase(),
+            variant = MangaButtonVariant.Ghost,
+            onClick = onRestart,
+            modifier = Modifier.fillMaxWidth(),
+            minHeight = 48.dp,
+        )
+        Spacer(Modifier.height(8.dp))
+        MangaButton(
+            label = stringResource(R.string.share_button).uppercase(),
             variant = MangaButtonVariant.Ghost,
             onClick = { showShare = true },
             modifier = Modifier.fillMaxWidth(),
-            minHeight = 48.dp,
+            minHeight = 44.dp,
         )
     }
 

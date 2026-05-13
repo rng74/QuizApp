@@ -100,6 +100,23 @@ object MangaIcons {
             }
         }
 
+    val Clock: ImageVector =
+        build("Clock") {
+            stroke {
+                // Outer ring
+                moveTo(21f, 12f)
+                arcToRelative(9f, 9f, 0f, isMoreThanHalf = false, isPositiveArc = true, -18f, 0f)
+                arcToRelative(9f, 9f, 0f, isMoreThanHalf = false, isPositiveArc = true, 18f, 0f)
+                close()
+                // Hour hand
+                moveTo(12f, 12f)
+                lineTo(12f, 7f)
+                // Minute hand
+                moveTo(12f, 12f)
+                lineTo(16f, 14f)
+            }
+        }
+
     val Swords: ImageVector =
         build("Swords") {
             stroke {

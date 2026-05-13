@@ -1,5 +1,6 @@
 package kz.yers.quiz.ui.composable.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -26,12 +30,14 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kz.yers.quiz.R
 import kz.yers.quiz.model.DuelState
 import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaChip
 import kz.yers.quiz.ui.composable.manga.MangaChipVariant
+import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.composable.manga.SpeechBubble
 import kz.yers.quiz.ui.theme.BangersFamily
@@ -77,10 +83,18 @@ fun DuelHandoffScreen(
             color = QuizColors.ink.copy(alpha = 0.6f),
         )
         Spacer(Modifier.height(8.dp))
-        ImpactText(
-            text = "ПЕРЕДАЙ ТЕЛЕФОН",
-            style = MaterialTheme.typography.displaySmall,
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Image(
+                modifier = Modifier.height(180.dp).fillMaxWidth().padding(top = 16.dp),
+                contentScale = ContentScale.FillWidth,
+                painter = painterResource(id = R.drawable.burst),
+                contentDescription = null,
+            )
+            ImpactText(
+                text = "ПЕРЕДАЙ ТЕЛЕФОН",
+                style = MaterialTheme.typography.displaySmall,
+            )
+        }
         Spacer(Modifier.height(24.dp))
 
         MangaPanel(
@@ -93,7 +107,14 @@ fun DuelHandoffScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 AvatarBadge(initial = current.name.firstOrNull()?.uppercase() ?: "?")
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(8.dp))
+                Icon(
+                    imageVector = MangaIcons.Swords,
+                    contentDescription = null,
+                    tint = QuizColors.ink,
+                    modifier = Modifier.size(28.dp),
+                )
+                Spacer(Modifier.height(8.dp))
                 Text(
                     text = "ХОДИТ",
                     fontFamily = RussoOneFamily,

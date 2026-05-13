@@ -1,5 +1,6 @@
 package kz.yers.quiz.ui.composable.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -29,10 +33,12 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kz.yers.quiz.R
 import kz.yers.quiz.model.DuelState
 import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
+import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.theme.BangersFamily
 import kz.yers.quiz.ui.theme.QuizColors
@@ -74,11 +80,19 @@ fun DuelResultScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        ImpactText(
-            text = title,
-            style = MaterialTheme.typography.displayMedium,
-            tintColor = QuizColors.streakFire,
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Image(
+                modifier = Modifier.height(180.dp).fillMaxWidth().padding(top = 16.dp),
+                contentScale = ContentScale.FillWidth,
+                painter = painterResource(id = R.drawable.burst),
+                contentDescription = null,
+            )
+            ImpactText(
+                text = title,
+                style = MaterialTheme.typography.displayMedium,
+                tintColor = QuizColors.streakFire,
+            )
+        }
         Spacer(Modifier.height(8.dp))
         Text(
             text = subtitle.uppercase(),
@@ -191,16 +205,27 @@ private fun PlayerScoreCard(
                 contentAlignment = Alignment.Center,
             ) {
                 if (isWinner) {
-                    Text(
-                        text = "★ ПОБЕДА",
-                        fontFamily = RussoOneFamily,
-                        fontSize = 11.sp,
-                        letterSpacing = 0.5.sp,
-                        color = QuizColors.streakFire,
-                        maxLines = 1,
-                        textAlign = TextAlign.Center,
-                        style = BadgeGlyphStyle,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            imageVector = MangaIcons.Star,
+                            contentDescription = null,
+                            tint = QuizColors.streakFire,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(
+                            text = "ПОБЕДА",
+                            fontFamily = RussoOneFamily,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.5.sp,
+                            color = QuizColors.streakFire,
+                            maxLines = 1,
+                            textAlign = TextAlign.Center,
+                            style = BadgeGlyphStyle,
+                        )
+                    }
                 }
             }
         }

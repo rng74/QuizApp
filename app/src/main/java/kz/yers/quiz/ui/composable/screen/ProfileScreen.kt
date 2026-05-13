@@ -82,6 +82,7 @@ fun ProfileScreen(
         }
         item {
             Spacer(Modifier.height(0.dp))
+            // Intentional overlap into the header. Keep in sync with ProfileHeader bottom padding (60.dp) if either changes.
             ProfileStatsRow(state = state, modifier = Modifier.padding(horizontal = 16.dp).offset(y = (-44).dp))
         }
         item {
@@ -93,12 +94,24 @@ fun ProfileScreen(
                 SectionTitle("Недавние игры")
                 Spacer(Modifier.height(8.dp))
                 if (state.recentGames.isEmpty()) {
-                    Text(
-                        text = "Пока пусто. Сыграйте первую игру!",
-                        fontSize = 13.sp,
-                        color = QuizColors.ink.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(vertical = 12.dp),
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(
+                            imageVector = MangaIcons.Trophy,
+                            contentDescription = null,
+                            tint = QuizColors.ink.copy(alpha = 0.35f),
+                            modifier = Modifier.size(36.dp),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Пока пусто. Сыграйте первую игру!",
+                            fontSize = 13.sp,
+                            color = QuizColors.ink.copy(alpha = 0.6f),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 } else {
                     state.recentGames.forEach { row ->
                         RecentRow(row)

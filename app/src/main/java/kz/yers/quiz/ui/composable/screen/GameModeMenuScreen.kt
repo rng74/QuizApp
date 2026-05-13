@@ -303,14 +303,14 @@ private fun DuelEntryCard(onClick: () -> Unit) {
                     ),
                 ).border(QuizStrokes.panel, QuizColors.ink, shape)
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "ДУЭЛЬ",
                     fontFamily = BangersFamily,
-                    fontSize = 22.sp,
+                    fontSize = 20.sp,
                     color = Color.White,
                     letterSpacing = 1.sp,
                     style = BadgeGlyphStyle,
@@ -357,14 +357,14 @@ private fun DailyEntryCard(onClick: () -> Unit) {
                     ),
                 ).border(QuizStrokes.panel, QuizColors.ink, shape)
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "ДНЕВНОЙ ВЫЗОВ",
                     fontFamily = BangersFamily,
-                    fontSize = 22.sp,
+                    fontSize = 20.sp,
                     color = QuizColors.ink,
                     letterSpacing = 1.sp,
                     style = BadgeGlyphStyle,

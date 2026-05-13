@@ -113,6 +113,10 @@ fun AppNavHost(
                 needToAskReview = viewModel.tries == 3,
                 onReviewSuccess = {},
                 onRestart = viewModel::resetQuiz,
+                onPlayAgain = {
+                    val mode = viewModel.activeMode.value
+                    if (mode != null) viewModel.startQuiz(mode) else viewModel.resetQuiz()
+                },
             )
         }
         composable(Routes.DAILY) {
