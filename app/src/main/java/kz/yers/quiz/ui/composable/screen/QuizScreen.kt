@@ -61,14 +61,20 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import kz.yers.quiz.BASE_URL
 import kz.yers.quiz.R
+import kz.yers.quiz.model.HintInventory
+import kz.yers.quiz.model.HintType
 import kz.yers.quiz.model.LocalA11y
+import kz.yers.quiz.model.QuestionHintState
 import kz.yers.quiz.model.QuizQuestion
 import kz.yers.quiz.ui.composable.AudioPlayer
 import kz.yers.quiz.ui.composable.BlurredImage
+import kz.yers.quiz.ui.composable.hints.HintBar
+import kz.yers.quiz.ui.composable.hints.RewardedAdDialog
 import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaPanel
+import kz.yers.quiz.ui.composable.manga.SpeechBubble
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
@@ -99,9 +105,17 @@ fun QuizScreen(
     isPosterEnabled: Boolean,
     totalQuestions: Int = 30,
     modeTint: Color? = null,
+    hintsAvailable: Boolean = false,
+    hintInventory: HintInventory = HintInventory(),
+    questionHintState: QuestionHintState = QuestionHintState(),
+    pendingAdType: HintType? = null,
     onAnswerSelected: (String) -> Unit,
     onNextQuestion: () -> Unit,
     onPlaybackReady: () -> Unit,
+    onUseHint: (HintType) -> Unit = {},
+    onRequestAd: (HintType) -> Unit = {},
+    onAdComplete: () -> Unit = {},
+    onAdCancel: () -> Unit = {},
 ) {
     val tint = modeTint ?: QuizColors.tint
     val a11y = LocalA11y.current
@@ -291,11 +305,33 @@ fun QuizScreen(
             AudioPlayer(
                 url = BASE_URL + question.correctAnswer.songLink,
                 needPlay = userAnswer == null,
+                paused = pendingAdType != null,
                 onPlaybackReady = onPlaybackReady,
                 onPlaybackEnded = onNextQuestion,
             )
 
             Spacer(Modifier.height(20.dp))
+
+            if (hintsAvailable && userAnswer == null) {
+                HintBar(
+                    fiftyFiftyCount = hintInventory.fiftyFifty,
+                    revealCount = hintInventory.revealLetter,
+                    skipCount = hintInventory.skip,
+                    fiftyFiftyDisabled = questionHintState.fiftyFiftyUsed,
+                    revealDisabled = questionHintState.revealUsed,
+                    onUseHint = onUseHint,
+                    onRequestAd = onRequestAd,
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+
+            if (questionHintState.revealedFirstLetter != null && userAnswer == null) {
+                SpeechBubble(
+                    text = stringResource(R.string.hint_revealed_letter, questionHintState.revealedFirstLetter),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+            }
 
             // Answer options — 2x2 grid.
             val opts = question.options
@@ -307,6 +343,7 @@ fun QuizScreen(
                     rowOpts.forEach { option ->
                         val optionCorrect = userAnswer != null && option == question.correctAnswer.titleRu
                         val optionSelectedWrong = userAnswer != null && userAnswer == option && !optionCorrect
+                        val eliminated = userAnswer == null && option in questionHintState.eliminatedOptions
 
                         val selectionShake =
                             if (optionSelectedWrong) {
@@ -331,9 +368,11 @@ fun QuizScreen(
                                 when {
                                     optionCorrect -> "✓"
                                     optionSelectedWrong -> "✕"
+                                    eliminated -> "✕"
                                     else -> null
                                 },
-                            enabled = userAnswer == null,
+                            enabled = userAnswer == null && !eliminated,
+                            dimmed = eliminated,
                             onClick = { onAnswerSelected(option) },
                         )
                     }
@@ -406,6 +445,13 @@ fun QuizScreen(
                 )
             }
         }
+
+        if (pendingAdType != null) {
+            RewardedAdDialog(
+                onComplete = onAdComplete,
+                onCancel = onAdCancel,
+            )
+        }
     }
 }
 
@@ -468,14 +514,26 @@ private fun OptionTile(
     highlight: Color?,
     iconGlyph: String?,
     enabled: Boolean,
+    dimmed: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val borderColor = highlight ?: QuizColors.ink
+    val borderColor =
+        when {
+            dimmed -> QuizColors.ink.copy(alpha = 0.35f)
+            else -> highlight ?: QuizColors.ink
+        }
     val borderWidth = if (highlight != null) QuizStrokes.hero else QuizStrokes.panel
     val backgroundColor =
         when {
+            dimmed -> QuizColors.ink.copy(alpha = 0.06f)
             highlight != null -> highlight.copy(alpha = 0.15f)
             else -> Color.White
+        }
+    val textAlpha =
+        when {
+            dimmed -> 0.35f
+            enabled || highlight != null -> 1f
+            else -> 0.6f
         }
     val shape = RoundedCornerShape(QuizRadii.button)
     Box(
@@ -498,7 +556,11 @@ private fun OptionTile(
             if (iconGlyph != null) {
                 Text(
                     text = iconGlyph,
-                    color = highlight ?: QuizColors.ink,
+                    color =
+                        when {
+                            dimmed -> QuizColors.ink.copy(alpha = 0.4f)
+                            else -> highlight ?: QuizColors.ink
+                        },
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
                 )
@@ -507,7 +569,7 @@ private fun OptionTile(
             val scale = bodyScale()
             Text(
                 text = text,
-                color = QuizColors.ink.copy(alpha = if (enabled || highlight != null) 1f else 0.6f),
+                color = QuizColors.ink.copy(alpha = textAlpha),
                 fontWeight = FontWeight.Medium,
                 fontFamily = bodyFontFamily(),
                 fontSize = (14f * scale).sp,

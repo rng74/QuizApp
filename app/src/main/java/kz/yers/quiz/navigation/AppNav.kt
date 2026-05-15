@@ -89,6 +89,9 @@ fun AppNavHost(
             val score by viewModel.score
             val isPosterEnabled by viewModel.isPosterEnabled
             val totalQuestions by viewModel.totalQuestionsInRun
+            val hintInventory by viewModel.hintInventory
+            val questionHintState by viewModel.questionHintState
+            val pendingAd by viewModel.pendingRewardedAd
             QuizScreen(
                 question = state.currentQuestion,
                 userAnswer = userAnswer,
@@ -99,9 +102,17 @@ fun AppNavHost(
                 totalQuestions = totalQuestions,
                 modeTint = viewModel.activeMode.value?.tint,
                 isPosterEnabled = isPosterEnabled,
+                hintsAvailable = viewModel.hintsAvailableForCurrentRun,
+                hintInventory = hintInventory,
+                questionHintState = questionHintState,
+                pendingAdType = pendingAd,
                 onAnswerSelected = viewModel::submitAnswer,
                 onNextQuestion = viewModel::moveToNextQuestion,
                 onPlaybackReady = viewModel::startTimer,
+                onUseHint = viewModel::useHint,
+                onRequestAd = viewModel::requestRewardedAd,
+                onAdComplete = viewModel::completeRewardedAd,
+                onAdCancel = viewModel::cancelRewardedAd,
             )
         }
         composable(Routes.RESULT) {
@@ -110,6 +121,7 @@ fun AppNavHost(
                 modeTint = viewModel.activeMode.value?.tint,
                 modeDisplayName = viewModel.activeMode.value?.displayName,
                 isNewRecord = viewModel.isNewRecord.value,
+                isDaily = viewModel.resultWasDaily.value,
                 needToAskReview = viewModel.tries == 3,
                 onReviewSuccess = {},
                 onRestart = viewModel::resetQuiz,

@@ -26,7 +26,14 @@ class UserPrefs(private val context: Context) {
         val A11Y_COLOR_BLIND_SAFE = booleanPreferencesKey("a11yColorBlindSafe")
         val A11Y_LARGER_TEXT = booleanPreferencesKey("a11yLargerText")
         val A11Y_DYSLEXIA_FONT = booleanPreferencesKey("a11yDyslexiaFont")
+        val HINTS_FIFTY_FIFTY = intPreferencesKey("hintsFiftyFifty")
+        val HINTS_REVEAL = intPreferencesKey("hintsReveal")
+        val HINTS_SKIP = intPreferencesKey("hintsSkip")
     }
+
+    private val starterFiftyFifty = 2
+    private val starterReveal = 2
+    private val starterSkip = 1
 
     val userName: Flow<String> = context.userPrefsDataStore.data.map { it[Keys.USER_NAME] ?: "Игрок" }
 
@@ -47,6 +54,12 @@ class UserPrefs(private val context: Context) {
     val largerText: Flow<Boolean> = context.userPrefsDataStore.data.map { it[Keys.A11Y_LARGER_TEXT] ?: false }
 
     val dyslexiaFont: Flow<Boolean> = context.userPrefsDataStore.data.map { it[Keys.A11Y_DYSLEXIA_FONT] ?: false }
+
+    val hintsFiftyFifty: Flow<Int> = context.userPrefsDataStore.data.map { it[Keys.HINTS_FIFTY_FIFTY] ?: starterFiftyFifty }
+
+    val hintsReveal: Flow<Int> = context.userPrefsDataStore.data.map { it[Keys.HINTS_REVEAL] ?: starterReveal }
+
+    val hintsSkip: Flow<Int> = context.userPrefsDataStore.data.map { it[Keys.HINTS_SKIP] ?: starterSkip }
 
     suspend fun setUserName(value: String) {
         context.userPrefsDataStore.edit { it[Keys.USER_NAME] = value }
@@ -88,5 +101,17 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setDyslexiaFont(value: Boolean) {
         context.userPrefsDataStore.edit { it[Keys.A11Y_DYSLEXIA_FONT] = value }
+    }
+
+    suspend fun setHintsFiftyFifty(value: Int) {
+        context.userPrefsDataStore.edit { it[Keys.HINTS_FIFTY_FIFTY] = value.coerceAtLeast(0) }
+    }
+
+    suspend fun setHintsReveal(value: Int) {
+        context.userPrefsDataStore.edit { it[Keys.HINTS_REVEAL] = value.coerceAtLeast(0) }
+    }
+
+    suspend fun setHintsSkip(value: Int) {
+        context.userPrefsDataStore.edit { it[Keys.HINTS_SKIP] = value.coerceAtLeast(0) }
     }
 }

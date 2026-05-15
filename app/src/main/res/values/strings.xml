@@ -18,4 +18,15 @@
     <string name="share_cancel">Отмена</string>
     <string name="share_caption">Мой счёт в АНИМЕ КВИЗ — %1$d!</string>
     <string name="share_chooser_title">Поделиться счётом</string>
+    <string name="hint_fifty_fifty">50 / 50</string>
+    <string name="hint_reveal_letter">Буква</string>
+    <string name="hint_skip">Пропустить</string>
+    <string name="hint_revealed_letter">Начинается с «%1$s»</string>
+    <string name="hint_get_more">+ Реклама</string>
+    <string name="hint_count">×%1$d</string>
+    <string name="ad_dialog_title">РЕКЛАМА</string>
+    <string name="ad_dialog_subtitle">Подсказка после ролика</string>
+    <string name="ad_dialog_remaining">Осталось: %1$d сек</string>
+    <string name="ad_dialog_cancel">Закрыть</string>
+    <string name="ad_dialog_reward_ready">Подсказка получена!</string>
 </resources>

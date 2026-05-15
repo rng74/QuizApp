@@ -61,6 +61,7 @@ fun ResultScreen(
     onRestart: () -> Unit,
     modeTint: Color? = null,
     modeDisplayName: String? = null,
+    isDaily: Boolean = false,
     onPlayAgain: () -> Unit = onRestart,
 ) {
     // Freeze the result snapshot on first composition. onRestart resets the underlying state
@@ -170,20 +171,22 @@ fun ResultScreen(
 
         Spacer(Modifier.height(40.dp))
 
-        MangaButton(
-            label = stringResource(R.string.play_again).uppercase(),
-            variant = MangaButtonVariant.Tint,
-            onClick = onPlayAgain,
-            modifier = Modifier.fillMaxWidth(),
-            minHeight = 56.dp,
-        )
-        Spacer(Modifier.height(12.dp))
+        if (!isDaily) {
+            MangaButton(
+                label = stringResource(R.string.play_again).uppercase(),
+                variant = MangaButtonVariant.Tint,
+                onClick = onPlayAgain,
+                modifier = Modifier.fillMaxWidth(),
+                minHeight = 56.dp,
+            )
+            Spacer(Modifier.height(12.dp))
+        }
         MangaButton(
             label = stringResource(R.string.back_to_menu).uppercase(),
-            variant = MangaButtonVariant.Ghost,
+            variant = if (isDaily) MangaButtonVariant.Tint else MangaButtonVariant.Ghost,
             onClick = onRestart,
             modifier = Modifier.fillMaxWidth(),
-            minHeight = 48.dp,
+            minHeight = if (isDaily) 56.dp else 48.dp,
         )
         Spacer(Modifier.height(8.dp))
         MangaButton(

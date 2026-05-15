@@ -3,6 +3,7 @@ package kz.yers.quiz.ui.composable
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -16,6 +17,7 @@ import androidx.media3.exoplayer.ExoPlayer
 fun AudioPlayer(
     url: String,
     needPlay: Boolean,
+    paused: Boolean = false,
     onPlaybackReady: () -> Unit,
     onPlaybackEnded: () -> Unit,
 ) {
@@ -32,6 +34,10 @@ fun AudioPlayer(
         }
     if (!needPlay) {
         exoPlayer.stop()
+    }
+    LaunchedEffect(paused, needPlay) {
+        if (!needPlay) return@LaunchedEffect
+        if (paused) exoPlayer.pause() else exoPlayer.play()
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(url) {

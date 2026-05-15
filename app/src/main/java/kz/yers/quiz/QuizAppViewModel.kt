@@ -26,7 +26,10 @@ import kz.yers.quiz.model.DailyState
 import kz.yers.quiz.model.DuelPlayer
 import kz.yers.quiz.model.DuelState
 import kz.yers.quiz.model.GameMode
+import kz.yers.quiz.model.HintInventory
+import kz.yers.quiz.model.HintType
 import kz.yers.quiz.model.ProfileState
+import kz.yers.quiz.model.QuestionHintState
 import kz.yers.quiz.model.QuizQuestion
 import kz.yers.quiz.model.RecentGame
 import kz.yers.quiz.model.UserStats
@@ -86,6 +89,12 @@ class QuizAppViewModel(
     val duelState = mutableStateOf(DuelState())
     val totalQuestionsInRun = mutableIntStateOf(30)
 
+    val hintInventory = mutableStateOf(HintInventory())
+    val questionHintState = mutableStateOf(QuestionHintState())
+    val pendingRewardedAd = mutableStateOf<HintType?>(null)
+    val resultWasDaily = mutableStateOf(false)
+    private var skipRequested = false
+
     init {
         _highScore.intValue = repository.getHighScore()
         viewModelScope.launch {
@@ -101,6 +110,91 @@ class QuizAppViewModel(
             val tutorialDone = userPrefs.tutorialCompleted.first()
             needsOnboarding.value = !tutorialDone
             onboardingResolved.value = true
+            hintInventory.value =
+                HintInventory(
+                    fiftyFifty = userPrefs.hintsFiftyFifty.first(),
+                    revealLetter = userPrefs.hintsReveal.first(),
+                    skip = userPrefs.hintsSkip.first(),
+                )
+        }
+    }
+
+    val hintsAvailableForCurrentRun: Boolean
+        get() = !isDailyRun && !isDuelRun
+
+    fun useHint(type: HintType) {
+        if (!hintsAvailableForCurrentRun) return
+        if (userAnswer.value != null) return
+        val state = appState.value as? AppState.Quiz ?: return
+        val inv = hintInventory.value
+        if (inv.countFor(type) <= 0) return
+        when (type) {
+            HintType.FIFTY_FIFTY -> applyFiftyFifty(state.currentQuestion)
+            HintType.REVEAL_LETTER -> applyRevealLetter(state.currentQuestion)
+            HintType.SKIP -> applySkip()
+        }
+        persistHintInventory(inv.withDecrement(type))
+    }
+
+    private fun applyFiftyFifty(question: QuizQuestion) {
+        if (questionHintState.value.fiftyFiftyUsed) return
+        val correct = question.correctAnswer.titleRu
+        val wrong = question.options.filter { it != correct }.shuffled().take(2).toSet()
+        questionHintState.value =
+            questionHintState.value.copy(
+                eliminatedOptions = questionHintState.value.eliminatedOptions + wrong,
+                fiftyFiftyUsed = true,
+            )
+    }
+
+    private fun applyRevealLetter(question: QuizQuestion) {
+        if (questionHintState.value.revealUsed) return
+        val first = question.correctAnswer.titleRu.firstOrNull { !it.isWhitespace() }?.uppercase() ?: return
+        questionHintState.value =
+            questionHintState.value.copy(
+                revealedFirstLetter = first,
+                revealUsed = true,
+            )
+    }
+
+    private fun applySkip() {
+        skipRequested = true
+        stopTimer()
+        moveToNextQuestion()
+    }
+
+    fun requestRewardedAd(type: HintType) {
+        if (pendingRewardedAd.value != null) return
+        if (!hintsAvailableForCurrentRun) return
+        pendingRewardedAd.value = type
+        stopTimer()
+    }
+
+    fun completeRewardedAd() {
+        val type = pendingRewardedAd.value ?: return
+        pendingRewardedAd.value = null
+        persistHintInventory(hintInventory.value.withIncrement(type))
+        useHint(type)
+        // SKIP advances to a new question, which restarts the timer via the next
+        // question's AudioPlayer. The others stay on the current question, so resume here.
+        if (type != HintType.SKIP && appState.value is AppState.Quiz && userAnswer.value == null) {
+            startTimer()
+        }
+    }
+
+    fun cancelRewardedAd() {
+        pendingRewardedAd.value = null
+        if (appState.value is AppState.Quiz && userAnswer.value == null) {
+            startTimer()
+        }
+    }
+
+    private fun persistHintInventory(next: HintInventory) {
+        hintInventory.value = next
+        viewModelScope.launch {
+            userPrefs.setHintsFiftyFifty(next.fiftyFifty)
+            userPrefs.setHintsReveal(next.revealLetter)
+            userPrefs.setHintsSkip(next.skip)
         }
     }
 
@@ -206,6 +300,8 @@ class QuizAppViewModel(
         }
         score.intValue = 0
         userAnswer.value = null
+        questionHintState.value = QuestionHintState()
+        skipRequested = false
         runStartElapsedMs = SystemClock.elapsedRealtime()
         appState.value =
             AppState.Quiz(
@@ -316,6 +412,8 @@ class QuizAppViewModel(
         score.intValue = 0
         userAnswer.value = null
         isNewRecord.value = false
+        questionHintState.value = QuestionHintState()
+        skipRequested = false
         loadQuizQuestions(gameMode)
     }
 
@@ -328,6 +426,8 @@ class QuizAppViewModel(
             if (attempt != null) return@launch
             tries += 1
             isDailyRun = true
+            questionHintState.value = QuestionHintState()
+            skipRequested = false
             activeMode.value = GameMode.NORMAL
             runStartElapsedMs = SystemClock.elapsedRealtime()
             appState.value = AppState.Loading
@@ -423,15 +523,22 @@ class QuizAppViewModel(
             appState.value = AppState.Menu
             return
         }
-        if (userAnswer.value != state.currentQuestion.correctAnswer.titleRu) {
+        val skipping = skipRequested
+        skipRequested = false
+        val correct = userAnswer.value == state.currentQuestion.correctAnswer.titleRu
+        val advance = skipping || correct
+        if (!advance) {
             finishRun()
-        } else if (state.currentQuestionIndex < quizQuestions.size - 1) {
+            return
+        }
+        if (state.currentQuestionIndex < quizQuestions.size - 1) {
             appState.value =
                 AppState.Quiz(
                     currentQuestion = quizQuestions[state.currentQuestionIndex + 1],
                     currentQuestionIndex = state.currentQuestionIndex + 1,
                 )
             userAnswer.value = null
+            questionHintState.value = QuestionHintState()
         } else {
             finishRun()
         }
@@ -451,6 +558,7 @@ class QuizAppViewModel(
             (appState.value as? AppState.Quiz)?.currentQuestion
                 ?: quizQuestions.firstOrNull()
         val isDaily = isDailyRun
+        resultWasDaily.value = isDaily
         val correct =
             currentQuestion != null && userAnswer.value == currentQuestion.correctAnswer.titleRu
 
@@ -505,6 +613,8 @@ class QuizAppViewModel(
         score.intValue = 0
         isNewRecord.value = false
         isDailyRun = false
+        questionHintState.value = QuestionHintState()
+        skipRequested = false
     }
 
     private fun finishDuelTurn(finalScore: Int) {
