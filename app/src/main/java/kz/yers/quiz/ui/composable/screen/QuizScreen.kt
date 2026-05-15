@@ -27,8 +27,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -111,7 +113,9 @@ fun QuizScreen(
     onRequestAd: (HintType) -> Unit = {},
     onAdComplete: () -> Unit = {},
     onAdCancel: () -> Unit = {},
+    onClose: () -> Unit = {},
 ) {
+    var showExitDialog by remember { mutableStateOf(false) }
     val tint = modeTint ?: QuizColors.tint
     val a11y = LocalA11y.current
     val haptic = LocalHapticFeedback.current
@@ -227,6 +231,8 @@ fun QuizScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                CloseButton(onClick = { showExitDialog = true })
+                Spacer(Modifier.width(10.dp))
                 ScoreChip(score = score, tint = tint, modifier = Modifier.scale(scale.value))
                 if (streak > 5) {
                     Spacer(Modifier.width(8.dp))
@@ -440,6 +446,49 @@ fun QuizScreen(
                 onCancel = onAdCancel,
             )
         }
+
+        if (showExitDialog) {
+            AlertDialog(
+                onDismissRequest = { showExitDialog = false },
+                title = { Text("Выйти из викторины?") },
+                text = { Text("Прогресс не сохранится.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showExitDialog = false
+                        onClose()
+                    }) {
+                        Text("Выйти", color = errorSurface)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showExitDialog = false }) {
+                        Text("Остаться")
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CloseButton(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(QuizRadii.button)
+    Box(
+        modifier =
+            Modifier
+                .size(40.dp)
+                .clip(shape)
+                .background(Color.White)
+                .border(QuizStrokes.regular, QuizColors.ink, shape)
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.material3.Icon(
+            imageVector = kz.yers.quiz.ui.composable.manga.MangaIcons.Close,
+            contentDescription = "Закрыть",
+            tint = QuizColors.ink,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

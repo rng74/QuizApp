@@ -1,5 +1,8 @@
 package kz.yers.quiz.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kz.yers.quiz.QuizAppViewModel
 import kz.yers.quiz.model.AppState
@@ -63,8 +67,9 @@ fun AppNavHost(
         }
     }
 
+    val currentRoute by navController.currentBackStackEntryAsState()
     MainScaffold(
-        appState = appState,
+        currentRoute = currentRoute?.destination?.route,
         coins = viewModel.coins.intValue,
         notifCount = 2,
         onTab = { index ->
@@ -83,6 +88,10 @@ fun AppNavHost(
             navController = navController,
             startDestination = Routes.MENU,
             modifier = Modifier.fillMaxSize(),
+            enterTransition = { fadeIn(tween(200)) },
+            exitTransition = { fadeOut(tween(160)) },
+            popEnterTransition = { fadeIn(tween(200)) },
+            popExitTransition = { fadeOut(tween(160)) },
         ) {
             composable(Routes.ONBOARDING) {
                 OnboardingScreen(onFinish = viewModel::completeOnboarding)
@@ -136,6 +145,7 @@ fun AppNavHost(
                     onRequestAd = viewModel::requestRewardedAd,
                     onAdComplete = viewModel::completeRewardedAd,
                     onAdCancel = viewModel::cancelRewardedAd,
+                    onClose = viewModel::abortQuiz,
                 )
             }
             composable(Routes.RESULT) {
@@ -164,10 +174,7 @@ fun AppNavHost(
             }
             composable(Routes.PROFILE) {
                 val state by viewModel.profileState
-                ProfileScreen(
-                    state = state,
-                    onBack = viewModel::backToMenu,
-                )
+                ProfileScreen(state = state)
             }
             composable(Routes.DUEL_SETUP) {
                 DuelSetupScreen(

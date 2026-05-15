@@ -518,6 +518,17 @@ object MangaIcons {
             }
         }
 
+    /** Bold X — close / forfeit (immersive screens). */
+    val Close: ImageVector =
+        build("Close") {
+            stroke(width = 2.5f) {
+                moveTo(6f, 6f)
+                lineTo(18f, 18f)
+                moveTo(18f, 6f)
+                lineTo(6f, 18f)
+            }
+        }
+
     /** Info-circle glyph — used as the notifications bell in the app bar. */
     val Bell: ImageVector =
         build("Bell") {

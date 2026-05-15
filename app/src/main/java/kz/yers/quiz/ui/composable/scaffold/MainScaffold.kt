@@ -1,5 +1,11 @@
 package kz.yers.quiz.ui.composable.scaffold
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,7 +43,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kz.yers.quiz.model.AppState
+import kz.yers.quiz.navigation.Routes
 import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.theme.BangersFamily
 import kz.yers.quiz.ui.theme.QuizColors
@@ -47,25 +53,23 @@ import kz.yers.quiz.ui.theme.RussoOneFamily
 
 private enum class Tab { HOME, DAILY, DUEL, TOP, PROFILE }
 
+private val ROOT_ROUTES =
+    setOf(Routes.MENU, Routes.DAILY, Routes.DUEL_SETUP, Routes.LEADERBOARD, Routes.PROFILE)
+
 /** Screens that get the pinned bottom navigation (root-level destinations). */
-private fun AppState.isRootTab(): Boolean =
-    this is AppState.Menu ||
-        this is AppState.Daily ||
-        this is AppState.DuelSetup ||
-        this is AppState.Leaderboard ||
-        this is AppState.Profile
+private fun String?.isRootTab(): Boolean = this in ROOT_ROUTES
 
 /** Screens whose top app bar is owned by the scaffold (the two we redesigned). */
-private fun AppState.scaffoldOwnsTopBar(): Boolean =
-    this is AppState.Menu || this is AppState.Leaderboard
+private fun String?.scaffoldOwnsTopBar(): Boolean =
+    this == Routes.MENU || this == Routes.LEADERBOARD
 
-private fun AppState.activeTab(): Tab? =
+private fun String?.activeTab(): Tab? =
     when (this) {
-        is AppState.Menu -> Tab.HOME
-        is AppState.Daily -> Tab.DAILY
-        is AppState.DuelSetup -> Tab.DUEL
-        is AppState.Leaderboard -> Tab.TOP
-        is AppState.Profile -> Tab.PROFILE
+        Routes.MENU -> Tab.HOME
+        Routes.DAILY -> Tab.DAILY
+        Routes.DUEL_SETUP -> Tab.DUEL
+        Routes.LEADERBOARD -> Tab.TOP
+        Routes.PROFILE -> Tab.PROFILE
         else -> null
     }
 
@@ -79,7 +83,7 @@ private fun AppState.activeTab(): Tab? =
  */
 @Composable
 fun MainScaffold(
-    appState: AppState,
+    currentRoute: String?,
     coins: Int,
     notifCount: Int,
     onTab: (tabIndex: Int) -> Unit,
@@ -88,9 +92,13 @@ fun MainScaffold(
     content: @Composable () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().background(QuizColors.paper)) {
-        if (appState.scaffoldOwnsTopBar()) {
+        AnimatedVisibility(
+            visible = currentRoute.scaffoldOwnsTopBar(),
+            enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(220)),
+            exit = shrinkVertically(animationSpec = tween(200)) + fadeOut(tween(160)),
+        ) {
             RootTopBar(
-                appState = appState,
+                isLeaderboard = currentRoute == Routes.LEADERBOARD,
                 coins = coins,
                 notifCount = notifCount,
                 onOpenSettings = onOpenSettings,
@@ -100,21 +108,24 @@ fun MainScaffold(
         Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
             content()
         }
-        if (appState.isRootTab()) {
-            BottomNav(active = appState.activeTab(), onTab = onTab)
+        AnimatedVisibility(
+            visible = currentRoute.isRootTab(),
+            enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(220)),
+            exit = shrinkVertically(animationSpec = tween(200)) + fadeOut(tween(160)),
+        ) {
+            BottomNav(active = currentRoute.activeTab(), onTab = onTab)
         }
     }
 }
 
 @Composable
 private fun RootTopBar(
-    appState: AppState,
+    isLeaderboard: Boolean,
     coins: Int,
     notifCount: Int,
     onOpenSettings: () -> Unit,
     onOpenShop: () -> Unit,
 ) {
-    val isLeaderboard = appState is AppState.Leaderboard
     Row(
         modifier =
             Modifier

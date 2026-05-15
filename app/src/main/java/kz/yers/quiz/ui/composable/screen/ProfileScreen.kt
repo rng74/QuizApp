@@ -3,7 +3,6 @@ package kz.yers.quiz.ui.composable.screen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,8 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,10 +67,7 @@ private val BadgeGlyphStyle =
     )
 
 @Composable
-fun ProfileScreen(
-    state: ProfileState,
-    onBack: () -> Unit,
-) {
+fun ProfileScreen(state: ProfileState) {
     LazyColumn(
         modifier =
             Modifier
@@ -81,7 +75,7 @@ fun ProfileScreen(
                 .background(QuizColors.paper),
     ) {
         item {
-            ProfileHeader(state = state, onBack = onBack)
+            ProfileHeader(state = state)
         }
         item {
             Spacer(Modifier.height(0.dp))
@@ -127,10 +121,7 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileHeader(
-    state: ProfileState,
-    onBack: () -> Unit,
-) {
+private fun ProfileHeader(state: ProfileState) {
     Box(
         modifier =
             Modifier
@@ -160,17 +151,15 @@ private fun ProfileHeader(
         )
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 60.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButtonHeader(onClick = onBack)
-                Spacer(Modifier.weight(1f))
                 Text(
                     text = "ПРОФИЛЬ",
+                    modifier = Modifier.fillMaxWidth(),
                     color = Color.White,
                     fontFamily = RussoOneFamily,
                     fontSize = 14.sp,
                     letterSpacing = 1.5.sp,
+                    textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.weight(1f))
-                Spacer(Modifier.size(40.dp))
             }
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.Bottom) {
@@ -500,28 +489,6 @@ private fun ModeDot(mode: GameMode?) {
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-@Composable
-private fun IconButtonHeader(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(QuizRadii.button)
-    Box(
-        modifier =
-            Modifier
-                .size(40.dp)
-                .clip(shape)
-                .background(Color.White.copy(alpha = 0.15f))
-                .border(QuizStrokes.regular, Color.White, shape)
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Назад",
-            tint = Color.White,
-            modifier = Modifier.size(22.dp),
         )
     }
 }

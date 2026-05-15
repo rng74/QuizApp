@@ -633,6 +633,21 @@ class QuizAppViewModel(
         userPrefs.setStreak(next, today)
     }
 
+    /** Quit mid-game from the immersive quiz: forfeit — no run recorded, no high score written. */
+    fun abortQuiz() {
+        stopTimer()
+        isDailyRun = false
+        isDuelRun = false
+        score.intValue = 0
+        userAnswer.value = null
+        isNewRecord.value = false
+        questionHintState.value = QuestionHintState()
+        skipRequested = false
+        quizQuestions = emptyList()
+        appState.value = AppState.Menu
+        viewModelScope.launch { refreshMenuStats() }
+    }
+
     fun resetQuiz() {
         repository.setHighScore(score.intValue)
         _highScore.intValue = repository.getHighScore()
