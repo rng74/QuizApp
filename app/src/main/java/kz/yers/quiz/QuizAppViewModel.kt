@@ -89,6 +89,11 @@ class QuizAppViewModel(
     val duelState = mutableStateOf(DuelState())
     val totalQuestionsInRun = mutableIntStateOf(30)
 
+    val coins = mutableIntStateOf(240)
+    val streakDays = mutableIntStateOf(0)
+    val bestScoreByMode = mutableStateOf<Map<GameMode, Int>>(emptyMap())
+    val recordModeJustSet = mutableStateOf<GameMode?>(null)
+
     val hintInventory = mutableStateOf(HintInventory())
     val questionHintState = mutableStateOf(QuestionHintState())
     val pendingRewardedAd = mutableStateOf<HintType?>(null)
@@ -116,7 +121,22 @@ class QuizAppViewModel(
                     revealLetter = userPrefs.hintsReveal.first(),
                     skip = userPrefs.hintsSkip.first(),
                 )
+            coins.intValue = userPrefs.coins.first()
+            refreshMenuStats()
         }
+    }
+
+    private suspend fun refreshMenuStats() {
+        bestScoreByMode.value =
+            GameMode.entries.associateWith { mode ->
+                withContext(Dispatchers.IO) { runHistoryDao.bestScoreForMode(mode.name) } ?: 0
+            }
+        streakDays.intValue = userPrefs.currentStreakDays.first()
+        coins.intValue = userPrefs.coins.first()
+    }
+
+    fun openLeaderboard() {
+        appState.value = AppState.Leaderboard
     }
 
     val hintsAvailableForCurrentRun: Boolean
@@ -259,6 +279,7 @@ class QuizAppViewModel(
 
     fun backToMenu() {
         appState.value = AppState.Menu
+        viewModelScope.launch { refreshMenuStats() }
     }
 
     fun openDuelSetup() {
@@ -412,6 +433,7 @@ class QuizAppViewModel(
         score.intValue = 0
         userAnswer.value = null
         isNewRecord.value = false
+        recordModeJustSet.value = null
         questionHintState.value = QuestionHintState()
         skipRequested = false
         loadQuizQuestions(gameMode)
@@ -554,6 +576,12 @@ class QuizAppViewModel(
         }
         val previousBest = repository.getHighScore()
         isNewRecord.value = finalScore > previousBest
+        recordModeJustSet.value =
+            if (!isDailyRun && !isDuelRun && mode != null && finalScore > (bestScoreByMode.value[mode] ?: 0)) {
+                mode
+            } else {
+                recordModeJustSet.value
+            }
         val currentQuestion =
             (appState.value as? AppState.Quiz)?.currentQuestion
                 ?: quizQuestions.firstOrNull()
@@ -609,6 +637,7 @@ class QuizAppViewModel(
         repository.setHighScore(score.intValue)
         _highScore.intValue = repository.getHighScore()
         appState.value = AppState.Menu
+        viewModelScope.launch { refreshMenuStats() }
         userAnswer.value = null
         score.intValue = 0
         isNewRecord.value = false

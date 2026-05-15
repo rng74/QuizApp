@@ -7,6 +7,8 @@ import androidx.compose.ui.unit.dp
 object QuizColors {
     val tint = Color(0xFFFE9400)
     val tintSoft = Color(0x1FFE9400)
+    val tintDeep = Color(0xFFE07A00)
+    val tintGlow = Color(0xFFFFD35B)
     val ink = Color(0xFF0A0A0A)
     val paper = Color(0xFFFBF6EC)
     val paper2 = Color(0xFFF3EBD9)
@@ -20,6 +22,20 @@ object QuizColors {
     val modeNormal = tint
     val modeRandom = hintPurple
     val modeShit = Color(0xFFD12A2A)
+
+    // Duel CTA gradient stops + leaderboard podium accents.
+    val duelStart = Color(0xFF6A4CFF)
+    val duelEnd = Color(0xFF3A8AC9)
+    val gold = Color(0xFFFFD95B)
+    val goldDeep = Color(0xFFFF9C00)
+    val silver = Color(0xFFE6E6E6)
+    val silverDeep = Color(0xFF888888)
+    val bronze = Color(0xFFE2A36F)
+    val bronzeDeep = Color(0xFFA05A2C)
+    val coinLight = Color(0xFFFFF8B6)
+    val coinDeep = Color(0xFFFFC933)
+    val flameMid = Color(0xFFFF8A00)
+    val flameHot = Color(0xFFFFEA00)
 }
 
 object QuizStrokes {

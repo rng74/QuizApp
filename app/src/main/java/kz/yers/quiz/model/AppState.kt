@@ -22,6 +22,8 @@ sealed class AppState(
 
     data object Profile : AppState("profile")
 
+    data object Leaderboard : AppState("leaderboard")
+
     data object Settings : AppState("settings")
 
     data object DuelSetup : AppState("duel_setup")

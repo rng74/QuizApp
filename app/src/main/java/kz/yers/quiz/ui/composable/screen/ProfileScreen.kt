@@ -1,5 +1,6 @@
 package kz.yers.quiz.ui.composable.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kz.yers.quiz.R
 import kz.yers.quiz.model.AchievementId
 import kz.yers.quiz.model.AchievementVariant
 import kz.yers.quiz.model.GameMode
@@ -274,8 +277,7 @@ private fun ProfileStatsRow(
             label = "серия",
             value = state.currentStreakDays.toString(),
             modifier = Modifier.weight(1f),
-            trailingIcon = MangaIcons.Flame,
-            trailingIconTint = QuizColors.streakFire,
+            trailingIconRes = R.drawable.flame_round,
         )
         StatTile("рекорд", state.highScore.toString(), modifier = Modifier.weight(1f))
     }
@@ -288,6 +290,7 @@ private fun StatTile(
     modifier: Modifier,
     trailingIcon: ImageVector? = null,
     trailingIconTint: Color = QuizColors.ink,
+    trailingIconRes: Int? = null,
 ) {
     val shape = RoundedCornerShape(QuizRadii.card)
     Box(
@@ -317,7 +320,14 @@ private fun StatTile(
                     fontSize = 22.sp,
                     color = QuizColors.ink,
                 )
-                if (trailingIcon != null) {
+                if (trailingIconRes != null) {
+                    Spacer(Modifier.size(4.dp))
+                    Image(
+                        painter = painterResource(id = trailingIconRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else if (trailingIcon != null) {
                     Spacer(Modifier.size(4.dp))
                     Icon(
                         imageVector = trailingIcon,
@@ -406,12 +416,20 @@ private fun Badge(
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                imageVector = id.icon,
-                contentDescription = null,
-                tint = content,
-                modifier = Modifier.size(22.dp),
-            )
+            if (id == AchievementId.Streak7 || id == AchievementId.Streak30) {
+                Image(
+                    painter = painterResource(id = R.drawable.flame),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+            } else {
+                Icon(
+                    imageVector = id.icon,
+                    contentDescription = null,
+                    tint = content,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = id.title,

@@ -375,6 +375,165 @@ object MangaIcons {
                 close()
             }
         }
+
+    /** House outline — bottom-nav "Главная". */
+    val Home: ImageVector =
+        build("Home") {
+            stroke {
+                moveTo(4f, 12f)
+                lineTo(12f, 4f)
+                lineTo(20f, 12f)
+                lineTo(20f, 20f)
+                lineTo(14f, 20f)
+                lineTo(14f, 14f)
+                lineTo(10f, 14f)
+                lineTo(10f, 20f)
+                lineTo(4f, 20f)
+                close()
+            }
+        }
+
+    /** Coin disc with inner ring + value marks — coins pill. */
+    val Coin: ImageVector =
+        build("Coin") {
+            stroke {
+                moveTo(12f, 3f)
+                arcToRelative(9f, 9f, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, 18f)
+                arcToRelative(9f, 9f, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, -18f)
+                close()
+            }
+            stroke(width = 1.5f) {
+                moveTo(12f, 6f)
+                arcToRelative(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, 12f)
+                arcToRelative(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, -12f)
+                close()
+            }
+            stroke {
+                moveTo(12f, 8f)
+                lineTo(12f, 16f)
+                moveTo(9f, 11f)
+                lineTo(15f, 13f)
+                moveTo(9f, 13f)
+                lineTo(15f, 11f)
+            }
+        }
+
+    /** Sun with rays + check — "Дневной" tab and daily-hero tile. */
+    val Daily: ImageVector =
+        build("Daily") {
+            stroke {
+                moveTo(12f, 6f)
+                arcToRelative(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, 12f)
+                arcToRelative(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, -12f)
+                close()
+            }
+            stroke(width = 2.2f) {
+                moveTo(12f, 3f)
+                lineTo(12f, 5f)
+                moveTo(12f, 19f)
+                lineTo(12f, 21f)
+                moveTo(3f, 12f)
+                lineTo(5f, 12f)
+                moveTo(19f, 12f)
+                lineTo(21f, 12f)
+                moveTo(5.6f, 5.6f)
+                lineTo(7f, 7f)
+                moveTo(17f, 17f)
+                lineTo(18.4f, 18.4f)
+                moveTo(5.6f, 18.4f)
+                lineTo(7f, 17f)
+                moveTo(17f, 7f)
+                lineTo(18.4f, 5.6f)
+            }
+            stroke {
+                moveTo(10f, 11f)
+                lineTo(12f, 13f)
+                lineTo(15f, 9f)
+            }
+        }
+
+    /** Twin "V" marks + clash spark — "Дуэль" tab. */
+    val Versus: ImageVector =
+        build("Versus") {
+            fill {
+                moveTo(5f, 5f)
+                lineTo(7f, 5f)
+                lineTo(9f, 12f)
+                lineTo(11f, 5f)
+                lineTo(13f, 5f)
+                lineTo(10f, 14f)
+                lineTo(8f, 14f)
+                close()
+            }
+            fill {
+                moveTo(11f, 5f)
+                lineTo(13f, 5f)
+                lineTo(15f, 12f)
+                lineTo(17f, 5f)
+                lineTo(19f, 5f)
+                lineTo(16f, 14f)
+                lineTo(14f, 14f)
+                close()
+            }
+            stroke(width = 2.5f) {
+                moveTo(11f, 17f)
+                lineTo(13f, 15f)
+                moveTo(13f, 17f)
+                lineTo(11f, 15f)
+            }
+        }
+
+    /** Three podium bars + star — "Топ" tab. */
+    val Leaderboard: ImageVector =
+        build("Leaderboard") {
+            stroke {
+                moveTo(4f, 10f)
+                lineTo(8f, 10f)
+                lineTo(8f, 20f)
+                lineTo(4f, 20f)
+                close()
+                moveTo(10f, 6f)
+                lineTo(14f, 6f)
+                lineTo(14f, 20f)
+                lineTo(10f, 20f)
+                close()
+                moveTo(16f, 12f)
+                lineTo(20f, 12f)
+                lineTo(20f, 20f)
+                lineTo(16f, 20f)
+                close()
+            }
+            fill {
+                moveTo(12f, 4f)
+                lineTo(13f, 6f)
+                lineTo(15f, 6.2f)
+                lineTo(13.5f, 7.6f)
+                lineTo(14f, 9.5f)
+                lineTo(12f, 8.5f)
+                lineTo(10f, 9.5f)
+                lineTo(10.5f, 7.6f)
+                lineTo(9f, 6.2f)
+                lineTo(11f, 6f)
+                close()
+            }
+        }
+
+    /** Info-circle glyph — used as the notifications bell in the app bar. */
+    val Bell: ImageVector =
+        build("Bell") {
+            stroke {
+                moveTo(12f, 3f)
+                arcToRelative(9f, 9f, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, 18f)
+                arcToRelative(9f, 9f, 0f, isMoreThanHalf = false, isPositiveArc = true, 0f, -18f)
+                close()
+            }
+            stroke(width = 2.5f) {
+                moveTo(12f, 11f)
+                lineTo(12f, 17f)
+                moveTo(12f, 7f)
+                lineTo(12f, 7.5f)
+            }
+        }
 }
 
 val GameMode.icon: ImageVector

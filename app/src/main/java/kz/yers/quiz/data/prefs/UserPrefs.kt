@@ -29,7 +29,10 @@ class UserPrefs(private val context: Context) {
         val HINTS_FIFTY_FIFTY = intPreferencesKey("hintsFiftyFifty")
         val HINTS_REVEAL = intPreferencesKey("hintsReveal")
         val HINTS_SKIP = intPreferencesKey("hintsSkip")
+        val COINS = intPreferencesKey("coins")
     }
+
+    private val starterCoins = 240
 
     private val starterFiftyFifty = 2
     private val starterReveal = 2
@@ -60,6 +63,8 @@ class UserPrefs(private val context: Context) {
     val hintsReveal: Flow<Int> = context.userPrefsDataStore.data.map { it[Keys.HINTS_REVEAL] ?: starterReveal }
 
     val hintsSkip: Flow<Int> = context.userPrefsDataStore.data.map { it[Keys.HINTS_SKIP] ?: starterSkip }
+
+    val coins: Flow<Int> = context.userPrefsDataStore.data.map { it[Keys.COINS] ?: starterCoins }
 
     suspend fun setUserName(value: String) {
         context.userPrefsDataStore.edit { it[Keys.USER_NAME] = value }
@@ -113,5 +118,9 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setHintsSkip(value: Int) {
         context.userPrefsDataStore.edit { it[Keys.HINTS_SKIP] = value.coerceAtLeast(0) }
+    }
+
+    suspend fun setCoins(value: Int) {
+        context.userPrefsDataStore.edit { it[Keys.COINS] = value.coerceAtLeast(0) }
     }
 }

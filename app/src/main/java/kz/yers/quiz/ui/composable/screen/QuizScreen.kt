@@ -54,11 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
-import com.airbnb.lottie.compose.rememberLottieComposition
 import kz.yers.quiz.BASE_URL
 import kz.yers.quiz.R
 import kz.yers.quiz.model.HintInventory
@@ -134,13 +129,6 @@ fun QuizScreen(
     val imageHeight = 220.dp
 
     val shakeAnim = remember { Animatable(0f) }
-
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.flame_animation))
-    val lottieProgress by animateLottieCompositionAsState(
-        composition = composition,
-        iterations = LottieConstants.IterateForever,
-        isPlaying = true,
-    )
 
     val isCorrect = userAnswer != null && userAnswer == question.correctAnswer.titleRu
     val isWrong = userAnswer != null && !isCorrect
@@ -242,9 +230,9 @@ fun QuizScreen(
                 ScoreChip(score = score, tint = tint, modifier = Modifier.scale(scale.value))
                 if (streak > 5) {
                     Spacer(Modifier.width(8.dp))
-                    LottieAnimation(
-                        composition = composition,
-                        progress = { lottieProgress },
+                    Image(
+                        painter = painterResource(id = R.drawable.flame),
+                        contentDescription = null,
                         modifier = Modifier.size(36.dp),
                     )
                 }
