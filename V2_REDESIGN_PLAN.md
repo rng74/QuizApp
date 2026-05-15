@@ -81,13 +81,14 @@ private header (`ProfileScreen`, `DailyChallengeScreen`, `SettingsScreen`,
 This is the largest remaining refactor; do it screen-by-screen behind the
 existing `AppState` router.
 
-### 7. Bottom-nav back-stack semantics — STUB
-Navigation still uses `popUpTo(0){inclusive=true}` (full stack clear) on every
-`AppState` change, so tabs don't keep independent back stacks and system-back
-from a root tab doesn't "exit to Home".
-**Real:** nested `NavHost` per tab or a `rememberSaveable` selected-tab with
-per-tab back stacks; system-back on a non-Home root tab → Home; on Home →
-exit.
+### 7. Bottom-nav back-stack semantics — PARTIAL
+System-back semantics are now correct via `BackHandler` in `AppNavHost`:
+non-Home root tabs + Settings → Home; Home → exit app; Quiz → forfeit-confirm
+dialog (also bound to system back inside `QuizScreen`); Loading/Result/Duel →
+sensible parent. Navigation still uses `popUpTo(0){inclusive=true}` so there
+are no *independent per-tab* back stacks.
+**Remaining:** nested `NavHost` per tab (or `rememberSaveable` per-tab stacks)
+if deep per-tab history is ever needed; not required for the current contract.
 
 ### 8. Icons / hero art — PARTIAL
 Nav + chrome icons are ported `MangaIcons` vectors. Mode-card art still uses

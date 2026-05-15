@@ -1,5 +1,6 @@
 package kz.yers.quiz.ui.composable.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -116,6 +117,8 @@ fun QuizScreen(
     onClose: () -> Unit = {},
 ) {
     var showExitDialog by remember { mutableStateOf(false) }
+    // System back during a run mirrors the × button: confirm before forfeiting.
+    BackHandler(enabled = !showExitDialog) { showExitDialog = true }
     val tint = modeTint ?: QuizColors.tint
     val a11y = LocalA11y.current
     val haptic = LocalHapticFeedback.current

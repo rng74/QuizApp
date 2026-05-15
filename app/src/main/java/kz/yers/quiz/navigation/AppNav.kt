@@ -1,5 +1,6 @@
 package kz.yers.quiz.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -64,6 +65,20 @@ fun AppNavHost(
                 popUpTo(0) { inclusive = true }
                 launchSingleTop = true
             }
+        }
+    }
+
+    // System-back semantics per the navigation contract:
+    //  - Home (Menu): not handled → default → exit app.
+    //  - Other root tabs + Settings: → Home.
+    //  - Quiz: handled inside QuizScreen (forfeit confirm).
+    //  - Loading/Result/Duel transient: → sensible parent.
+    BackHandler(enabled = appState != AppState.Menu && appState !is AppState.Quiz) {
+        when (appState) {
+            AppState.Loading -> viewModel.abortQuiz()
+            AppState.Result -> viewModel.resetQuiz()
+            AppState.DuelHandoff, AppState.DuelResult -> viewModel.exitDuel()
+            else -> viewModel.backToMenu()
         }
     }
 
