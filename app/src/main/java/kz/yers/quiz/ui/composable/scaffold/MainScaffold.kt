@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -59,9 +60,18 @@ private val ROOT_ROUTES =
 /** Screens that get the pinned bottom navigation (root-level destinations). */
 private fun String?.isRootTab(): Boolean = this in ROOT_ROUTES
 
-/** Screens whose top app bar is owned by the scaffold (the two we redesigned). */
+/** Root screens whose top app bar is owned by the scaffold (the two we redesigned). */
 private fun String?.scaffoldOwnsTopBar(): Boolean =
     this == Routes.MENU || this == Routes.LEADERBOARD
+
+/** Pushed screens get the scaffold's back+title bar (no bottom nav). */
+private fun String?.isPushed(): Boolean = this == Routes.SETTINGS
+
+private fun String?.pushedTitle(): String =
+    when (this) {
+        Routes.SETTINGS -> "НАСТРОЙКИ"
+        else -> ""
+    }
 
 private fun String?.activeTab(): Tab? =
     when (this) {
@@ -76,10 +86,12 @@ private fun String?.activeTab(): Tab? =
 /**
  * Navigation-contract shell. Three archetypes drive the chrome:
  *  - Root tab → scaffold top bar (Home/Leaderboard only) + pinned bottom nav.
- *  - Pushed / Immersive → no scaffold chrome; the screen owns its own header.
+ *  - Pushed → scaffold back+title bar, no bottom nav (Settings).
+ *  - Immersive → no scaffold chrome; the screen owns its own header (Quiz).
  *
- * Daily/Duel/Profile are root tabs (bottom nav shows) but keep their existing in-screen
- * headers for now — full per-archetype top-bar unification is tracked in V2_REDESIGN_PLAN.md.
+ * Daily/Duel/Profile are root tabs (bottom nav shows) but keep their bespoke in-screen
+ * headers — their v2-manga designs are not the "coins · brand" pattern. Tracked in
+ * V2_REDESIGN_PLAN.md.
  */
 @Composable
 fun MainScaffold(
@@ -89,6 +101,7 @@ fun MainScaffold(
     onTab: (tabIndex: Int) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenShop: () -> Unit,
+    onBack: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().background(QuizColors.paper)) {
@@ -104,6 +117,13 @@ fun MainScaffold(
                 onOpenSettings = onOpenSettings,
                 onOpenShop = onOpenShop,
             )
+        }
+        AnimatedVisibility(
+            visible = currentRoute.isPushed(),
+            enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(220)),
+            exit = shrinkVertically(animationSpec = tween(200)) + fadeOut(tween(160)),
+        ) {
+            PushedTopBar(title = currentRoute.pushedTitle(), onBack = onBack)
         }
         Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
             content()
@@ -180,6 +200,54 @@ private fun RootTopBar(
             IconBtn(icon = MangaIcons.Bell, badge = notifCount, onClick = {})
         }
         IconBtn(icon = MangaIcons.Settings, badge = 0, onClick = onOpenSettings)
+    }
+}
+
+@Composable
+private fun PushedTopBar(
+    title: String,
+    onBack: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(QuizColors.paper)
+                .statusBarsPadding()
+                .drawBehind {
+                    val step = 30.dp.toPx()
+                    var x = -size.height
+                    while (x < size.width) {
+                        drawLine(
+                            color = QuizColors.ink.copy(alpha = 0.05f),
+                            start = Offset(x, size.height),
+                            end = Offset(x + size.height, 0f),
+                            strokeWidth = 1.dp.toPx(),
+                        )
+                        x += step
+                    }
+                    drawLine(
+                        color = QuizColors.ink,
+                        start = Offset(0f, size.height),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = QuizStrokes.panel.toPx(),
+                    )
+                }
+                .heightIn(min = 52.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        IconBtn(icon = MangaIcons.Back, badge = 0, onClick = onBack)
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            fontFamily = RussoOneFamily,
+            fontSize = 18.sp,
+            letterSpacing = 1.sp,
+            color = QuizColors.ink,
+        )
+        Spacer(Modifier.size(46.dp))
     }
 }
 

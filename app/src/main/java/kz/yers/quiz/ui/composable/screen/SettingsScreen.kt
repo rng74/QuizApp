@@ -16,16 +16,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,7 +44,6 @@ import kz.yers.quiz.ui.theme.errorColor
 import kz.yers.quiz.ui.theme.successColor
 
 data class SettingsActions(
-    val onBack: () -> Unit,
     val onPosterToggle: (Boolean) -> Unit,
     val onSoundToggle: (Boolean) -> Unit,
     val onReduceMotionToggle: (Boolean) -> Unit,
@@ -73,7 +68,6 @@ fun SettingsScreen(
                 .background(QuizColors.paper),
         contentPadding = PaddingValues(0.dp),
     ) {
-        item { SettingsAppBar(onBack = actions.onBack) }
         item {
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -181,61 +175,6 @@ fun SettingsScreen(
                 Spacer(Modifier.height(8.dp))
             }
         }
-    }
-}
-
-@Composable
-private fun SettingsAppBar(onBack: () -> Unit) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-                .background(QuizColors.paper)
-                .drawBehind {
-                    val s = QuizStrokes.panel.toPx()
-                    drawLine(
-                        color = QuizColors.ink,
-                        start = Offset(0f, size.height - s / 2f),
-                        end = Offset(size.width, size.height - s / 2f),
-                        strokeWidth = s,
-                    )
-                }
-                .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        IconButton(onBack)
-        Text(
-            text = "НАСТРОЙКИ",
-            modifier = Modifier.weight(1f),
-            color = QuizColors.ink,
-            fontFamily = RussoOneFamily,
-            fontSize = 18.sp,
-            letterSpacing = 1.sp,
-        )
-    }
-}
-
-@Composable
-private fun IconButton(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(QuizRadii.button)
-    Box(
-        modifier =
-            Modifier
-                .size(40.dp)
-                .clip(shape)
-                .background(Color.White)
-                .border(QuizStrokes.regular, QuizColors.ink, shape)
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Назад",
-            tint = QuizColors.ink,
-            modifier = Modifier.size(22.dp),
-        )
     }
 }
 

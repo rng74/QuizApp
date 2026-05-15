@@ -69,17 +69,17 @@ next `startQuiz()`. Edge cases (daily/duel) are excluded by design.
 **Hardening:** persist "last record mode" so the ribbon survives process death
 until the player re-enters that mode.
 
-### 6. Top-bar unification across all screens — STUB
-The scaffold owns the top bar only for Home and Leaderboard. Daily, Duel
-setup, and Profile are root tabs (bottom nav shows) but still render their own
-in-screen headers — risk of double chrome was avoided by **not** drawing the
-scaffold top bar there.
-**Real:** give `MainScaffold` a per-archetype top-bar slot (root brand /
-pushed back+title / immersive close+progress+score); delete each screen's
-private header (`ProfileScreen`, `DailyChallengeScreen`, `SettingsScreen`,
-`DuelSetupScreen`, `QuizScreen`) and feed title/actions into the scaffold.
-This is the largest remaining refactor; do it screen-by-screen behind the
-existing `AppState` router.
+### 6. Top-bar unification across all screens — PARTIAL
+`MainScaffold` now owns three archetypes: **Root** (brand bar, Home/Leaderboard
++ bottom nav), **Pushed** (back+title bar, Settings, no bottom nav), and
+**Immersive** (no scaffold chrome, Quiz owns its × bar). `SettingsScreen`'s
+private app bar was removed and replaced by the scaffold Pushed bar.
+**Remaining:** Daily/Duel-setup/Profile are root tabs that intentionally keep
+their bespoke v2-manga headers (dark gradient avatar header / daily hero bar —
+not the "coins · brand" pattern), so they are *not* candidates for the root
+brand bar. Duel-setup's "ОТМЕНА" is an in-form action, not chrome. If a future
+design unifies these, feed their titles/actions through the scaffold; for now
+the contract is satisfied.
 
 ### 7. Bottom-nav back-stack semantics — PARTIAL
 System-back semantics are now correct via `BackHandler` in `AppNavHost`:

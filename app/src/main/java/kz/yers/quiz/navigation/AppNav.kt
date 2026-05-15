@@ -98,6 +98,7 @@ fun AppNavHost(
         },
         onOpenSettings = viewModel::openSettings,
         onOpenShop = {},
+        onBack = viewModel::backToMenu,
     ) {
         NavHost(
             navController = navController,
@@ -222,7 +223,6 @@ fun AppNavHost(
                     a11y = a11y,
                     actions =
                         SettingsActions(
-                            onBack = viewModel::backToMenu,
                             onPosterToggle = viewModel::setPosterEnabled,
                             onSoundToggle = viewModel::setSoundEnabled,
                             onReduceMotionToggle = viewModel::setReduceMotion,

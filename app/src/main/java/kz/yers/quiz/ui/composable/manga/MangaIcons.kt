@@ -518,6 +518,18 @@ object MangaIcons {
             }
         }
 
+    /** Left arrow — back (pushed screens). */
+    val Back: ImageVector =
+        build("Back") {
+            stroke(width = 2.5f) {
+                moveTo(14f, 6f)
+                lineTo(8f, 12f)
+                lineTo(14f, 18f)
+                moveTo(8f, 12f)
+                lineTo(19f, 12f)
+            }
+        }
+
     /** Bold X — close / forfeit (immersive screens). */
     val Close: ImageVector =
         build("Close") {
