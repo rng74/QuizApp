@@ -119,6 +119,7 @@ fun AppNavHost(
                     streakDays = viewModel.streakDays.intValue,
                     bestScoreByMode = viewModel.bestScoreByMode.value,
                     recordModeJustSet = viewModel.recordModeJustSet.value,
+                    dailyStats = viewModel.dailyState.value.liveStats,
                     onGameModeSelected = viewModel::startQuiz,
                     onOpenDaily = viewModel::openDaily,
                     onOpenDuel = viewModel::openDuelSetup,

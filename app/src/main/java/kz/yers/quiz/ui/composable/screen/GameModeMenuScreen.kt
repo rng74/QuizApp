@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kz.yers.quiz.R
+import kz.yers.quiz.model.DailyLiveStats
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.theme.BangersFamily
@@ -62,6 +63,7 @@ fun GameModeMenuScreen(
     streakDays: Int,
     bestScoreByMode: Map<GameMode, Int>,
     recordModeJustSet: GameMode?,
+    dailyStats: DailyLiveStats? = null,
     onGameModeSelected: (GameMode) -> Unit,
     onOpenDaily: () -> Unit = {},
     onOpenDuel: () -> Unit = {},
@@ -75,7 +77,7 @@ fun GameModeMenuScreen(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        DailyHero(onClick = onOpenDaily)
+        DailyHero(stats = dailyStats, onClick = onOpenDaily)
         StreakRow(streakDays = streakDays, highScore = highScore)
         SectionHeading()
         ModeGrid(
@@ -126,7 +128,10 @@ private fun OffsetCard(
 private fun solid(color: Color) = Brush.linearGradient(listOf(color, color))
 
 @Composable
-private fun DailyHero(onClick: () -> Unit) {
+private fun DailyHero(
+    stats: DailyLiveStats?,
+    onClick: () -> Unit,
+) {
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -233,7 +238,13 @@ private fun DailyHero(onClick: () -> Unit) {
                                 .background(QuizColors.streakFire),
                     )
                     Text(
-                        text = "847 играют сейчас · ваше место #23",
+                        text =
+                            when {
+                                stats == null || stats.players == 0 -> "Сыграй первым сегодня"
+                                stats.myRank != null ->
+                                    "${stats.players} играют сегодня · ваше место #${stats.myRank}"
+                                else -> "${stats.players} играют сегодня"
+                            },
                         fontWeight = FontWeight.Medium,
                         fontSize = 10.sp,
                         color = QuizColors.ink.copy(alpha = 0.75f),

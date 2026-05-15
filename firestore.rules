@@ -29,6 +29,28 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Anime Quiz — Daily Challenge shared stats. One attempt doc per player per UTC day.
+    // The track is deterministic client-side; these docs only aggregate how players did.
+    match /daily/{day}/attempts/{uid} {
+      // Any signed-in (anonymous) player can read aggregate stats for a day.
+      allow read: if request.auth != null;
+
+      // A player may only write their own attempt, bounded and monotonic on score.
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['score', 'correct', 'updatedAt'])
+        && request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 100000
+        && request.resource.data.correct is bool
+        && (
+             !exists(/databases/$(database)/documents/daily/$(day)/attempts/$(uid))
+             || request.resource.data.score >= resource.data.score
+           );
+
+      allow delete: if false;
+    }
+
     // Everything else is closed until its own rules are written.
     match /{document=**} {
       allow read, write: if false;

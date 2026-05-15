@@ -360,20 +360,21 @@ private fun StreakStrip(streakDays: Int) {
 
 @Composable
 private fun StatsRow(state: DailyState) {
+    val stats = state.liveStats
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
         StatPanel(
             label = "место",
-            value = state.attempt?.let { "—" } ?: "—",
+            value = stats?.myRank?.let { "#$it" } ?: "—",
             modifier = Modifier.weight(1f),
         )
         StatPanel(
             label = "играют",
-            value = "—",
+            value = stats?.players?.toString() ?: "—",
             modifier = Modifier.weight(1f),
         )
         StatPanel(
             label = "угадали",
-            value = "—",
+            value = stats?.let { "${it.solvedPct}%" } ?: "—",
             modifier = Modifier.weight(1f),
         )
     }

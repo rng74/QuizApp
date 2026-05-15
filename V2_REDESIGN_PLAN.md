@@ -59,11 +59,22 @@ Loading / Loaded / Offline (retry). Security in `firestore.rules`.
 *Все время* is backed (single best-score doc). Time-bucketed docs or a
 `scores/{uid}/{period}` sub-doc model would make the other chips real.
 
-### 4. Daily hero live data — PARTIAL
-Countdown to next midnight is **real**. "847 играют сейчас · ваше место #23"
-is a static literal.
-**Real:** `GET /v1/daily` returns live player count + the user's standing;
-the "2× очки" multiplier already exists in `submitAnswer()`.
+### 4. Daily hero live data — IMPLEMENTED
+Countdown to next midnight is real. The track is already deterministic per
+epochDay client-side (`AnimeRepository.getDailyQuestion` — same track for
+everyone, no server needed). Shared stats are now Firebase-backed:
+`daily/{epochDay}/attempts/{uid}` = { score, correct, updatedAt }.
+`DailyStatsRepository.submitAttempt()` upserts (monotonic) after each daily
+run; `loadStats()` returns players / solved-% / your-rank via `count()`
+aggregations. Surfaced in `DailyState.liveStats`, rendered in the Daily
+screen `StatsRow` (место/играют/угадали) and the Home hero live line
+("N играют сегодня · ваше место #R"). Graceful when offline/unprovisioned:
+panels show "—", hero shows "Сыграй первым сегодня". Security in
+`firestore.rules` (`daily/{day}/attempts/{uid}` block, bounded + monotonic).
+The "2× очки" multiplier already exists in `submitAnswer()`.
+**Remaining:** the "топ-100 получают монеты" promise needs the coin economy
+(Stub #1); the daily *track* is still locally deterministic, not curated —
+authentic curation waits on the content pipeline (priority #8).
 
 ### 5. Per-mode records / "НОВЫЙ!" ribbon — PARTIAL
 `bestScoreByMode` is derived from `RunHistoryDao.bestScoreForMode()` (real).
@@ -115,8 +126,9 @@ Remaining bets, priority order:
    client-asserted, bounded by `firestore.rules`. Content pipeline runs as an
    offline script, not a cron. *Leaderboard slice shipped (see Stub #3).*
    Next: Daily online + Duel + profile/friends on the same model.
-3. **Daily Challenge online** — curated track per UTC day + live stats
-   (item 4).
+3. ~~**Daily Challenge online** — live stats (item 4)~~ — DONE (shared
+   stats shipped on the Firebase model; deterministic track stands in until
+   the content pipeline curates one, priority #8).
 4. **Async Duel** — 6-char share code, server-fixed track list, FCM result
    push (current Duel is local hot-seat only).
 5. **Hint Shop + coin economy + AdMob** (items 1–2).
@@ -154,6 +166,10 @@ Until 1–3 are done the app degrades gracefully: the Топ tab shows the
 - Leaderboard: `ui/composable/screen/LeaderboardScreen.kt`,
   `data/remote/LeaderboardRepository.kt`, `model/Leaderboard.kt`,
   `firestore.rules`
+- Daily online: `data/remote/DailyStatsRepository.kt`,
+  `model/DailyState.kt` (`DailyLiveStats`),
+  `ui/composable/screen/DailyChallengeScreen.kt`,
+  `ui/composable/screen/GameModeMenuScreen.kt`, `firestore.rules`
 - Router: `navigation/AppNav.kt`, `navigation/Routes.kt`, `model/AppState.kt`
 - State: `QuizAppViewModel.kt`, `data/prefs/UserPrefs.kt`
 - Tokens/icons: `ui/theme/Tokens.kt`, `ui/composable/manga/MangaIcons.kt`

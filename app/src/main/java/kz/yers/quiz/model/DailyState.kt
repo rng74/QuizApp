@@ -6,6 +6,14 @@ data class DailyState(
     val streakDays: Int = 0,
     val attempt: DailyAttemptSummary? = null,
     val previousTrackTitle: String? = null,
+    val liveStats: DailyLiveStats? = null,
+)
+
+/** Shared, cross-player stats for today's daily — null while loading or offline. */
+data class DailyLiveStats(
+    val players: Int,
+    val solvedPct: Int,
+    val myRank: Int?,
 )
 
 data class DailyAttemptSummary(

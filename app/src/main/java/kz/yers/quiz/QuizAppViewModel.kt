@@ -18,6 +18,7 @@ import kz.yers.quiz.data.local.dao.RunHistoryDao
 import kz.yers.quiz.data.local.entity.DailyAttemptEntity
 import kz.yers.quiz.data.local.entity.RunHistoryEntity
 import kz.yers.quiz.data.prefs.UserPrefs
+import kz.yers.quiz.data.remote.DailyStatsRepository
 import kz.yers.quiz.data.remote.LeaderboardRepository
 import kz.yers.quiz.model.A11yState
 import kz.yers.quiz.model.Achievements
@@ -47,6 +48,7 @@ class QuizAppViewModel(
     private val dailyAttemptDao: DailyAttemptDao,
     private val userPrefs: UserPrefs,
     private val leaderboard: LeaderboardRepository,
+    private val dailyStats: DailyStatsRepository,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
@@ -136,6 +138,7 @@ class QuizAppViewModel(
             }
         streakDays.intValue = userPrefs.currentStreakDays.first()
         coins.intValue = userPrefs.coins.first()
+        refreshDailyLiveStats()
     }
 
     val leaderboardState = mutableStateOf<LeaderboardUiState>(LeaderboardUiState.Loading)
@@ -379,6 +382,17 @@ class QuizAppViewModel(
                     },
                 previousTrackTitle = yesterday?.trackTitle,
             )
+        refreshDailyLiveStats()
+    }
+
+    /** Pull today's cross-player stats (best-effort) into [dailyState]. Safe offline. */
+    private suspend fun refreshDailyLiveStats() {
+        val epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay()
+        val myScore = withContext(Dispatchers.IO) { dailyAttemptDao.forDay(epochDay) }?.score
+        val stats = dailyStats.loadStats(epochDay, myScore)
+        if (stats != null) {
+            dailyState.value = dailyState.value.copy(liveStats = stats)
+        }
     }
 
     private suspend fun refreshProfileState() {
@@ -632,6 +646,12 @@ class QuizAppViewModel(
                         name = userPrefs.userName.first(),
                         score = finalScore,
                         modeLabel = mode.shortLabel,
+                    )
+                } else {
+                    dailyStats.submitAttempt(
+                        epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
+                        score = finalScore,
+                        correct = correct,
                     )
                 }
             }
