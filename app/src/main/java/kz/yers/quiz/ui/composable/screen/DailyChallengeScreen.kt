@@ -2,7 +2,6 @@ package kz.yers.quiz.ui.composable.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,7 +57,6 @@ import java.time.ZoneOffset
 @Composable
 fun DailyChallengeScreen(
     state: DailyState,
-    onBack: () -> Unit,
     onPlay: () -> Unit,
 ) {
     Box(
@@ -76,7 +72,7 @@ fun DailyChallengeScreen(
                     .PaddingValues(0.dp),
         ) {
             item {
-                DailyAppBar(onBack = onBack)
+                DailyAppBar()
             }
             item {
                 Column(
@@ -98,7 +94,7 @@ fun DailyChallengeScreen(
 }
 
 @Composable
-private fun DailyAppBar(onBack: () -> Unit) {
+private fun DailyAppBar() {
     Row(
         modifier =
             Modifier
@@ -113,40 +109,17 @@ private fun DailyAppBar(onBack: () -> Unit) {
                         end = Offset(size.width, size.height - s / 2f),
                         strokeWidth = s,
                     )
-                }.padding(horizontal = 14.dp),
+                }.padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        IconButtonBack(onClick = onBack)
         Text(
             text = "ДНЕВНОЙ ВЫЗОВ",
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             color = QuizColors.ink,
             fontFamily = RussoOneFamily,
             fontSize = 18.sp,
             letterSpacing = 1.sp,
-        )
-    }
-}
-
-@Composable
-private fun IconButtonBack(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(QuizRadii.button)
-    Box(
-        modifier =
-            Modifier
-                .size(40.dp)
-                .clip(shape)
-                .background(Color.White)
-                .border(QuizStrokes.regular, QuizColors.ink, shape)
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Назад",
-            tint = QuizColors.ink,
-            modifier = Modifier.size(22.dp),
+            textAlign = TextAlign.Center,
         )
     }
 }

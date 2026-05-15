@@ -168,7 +168,6 @@ fun AppNavHost(
                 val state by viewModel.dailyState
                 DailyChallengeScreen(
                     state = state,
-                    onBack = viewModel::backToMenu,
                     onPlay = viewModel::startDailyRun,
                 )
             }
