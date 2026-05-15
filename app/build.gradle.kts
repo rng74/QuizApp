@@ -78,6 +78,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
     implementation(libs.play.review)
     implementation(libs.konfetti)
     implementation(libs.lottie)

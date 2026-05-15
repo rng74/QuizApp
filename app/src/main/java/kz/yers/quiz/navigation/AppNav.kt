@@ -125,7 +125,10 @@ fun AppNavHost(
                 )
             }
             composable(Routes.LEADERBOARD) {
-                LeaderboardScreen()
+                LeaderboardScreen(
+                    state = viewModel.leaderboardState.value,
+                    onRetry = viewModel::loadLeaderboard,
+                )
             }
             composable(Routes.LOADING) {
                 LoadingScreen(modeTint = viewModel.activeMode.value?.tint)

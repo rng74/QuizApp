@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Anime Quiz — global leaderboard. No Cloud Functions: the client writes its own
+// `leaderboard/{uid}` doc; these rules are the only server-side guard.
+// Deploy: firebase deploy --only firestore:rules  (or paste in console → Firestore → Rules)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /leaderboard/{uid} {
+      // Any signed-in (anonymous) player can read the board.
+      allow read: if request.auth != null;
+
+      // A player may only write their own doc, with a bounded, monotonic best score.
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'score', 'mode', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 24
+        && request.resource.data.mode is string
+        && request.resource.data.mode.size() <= 16
+        && request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 100000
+        && (
+             !exists(/databases/$(database)/documents/leaderboard/$(uid))
+             || request.resource.data.score >= resource.data.score
+           );
+
+      allow delete: if false;
+    }
+
+    // Everything else is closed until its own rules are written.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

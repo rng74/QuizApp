@@ -49,12 +49,15 @@ button is a no-op.
 **Real:** FCM channel for duel results / daily reminders; an inbox screen
 (Pushed archetype); badge = unread count from a `Notification` table.
 
-### 3. Leaderboard — STUB
-`LeaderboardScreen` renders hardcoded sample rows; period chips are inert; no
-search icon in its top bar.
-**Real:** backend `GET /v1/leaderboard?period=&mode=&limit=` →
-ranked rows; player's real rank/gap; period + mode filters; pull-to-refresh;
-offline banner. (See design README Phase 6 endpoint contract.)
+### 3. Leaderboard — IMPLEMENTED (all-time)
+Firebase-backed: anonymous Auth + Firestore `leaderboard/{uid}` (best solo
+score per player). `LeaderboardRepository.load()` fetches top 30 +
+aggregation-`count()` rank/total; `submitScore()` upserts monotonically in a
+transaction after each non-daily run. `LeaderboardScreen` renders
+Loading / Loaded / Offline (retry). Security in `firestore.rules`.
+**Remaining:** period filters (День/Неделя/Месяц) are visual only — only
+*Все время* is backed (single best-score doc). Time-bucketed docs or a
+`scores/{uid}/{period}` sub-doc model would make the other chips real.
 
 ### 4. Daily hero live data — PARTIAL
 Countdown to next midnight is **real**. "847 играют сейчас · ваше место #23"
@@ -105,10 +108,13 @@ library, Onboarding, Daily Challenge, Duel (local hot-seat), Profile +
 achievements, hints + rewarded-ad scaffolding, accessibility flags.
 
 Remaining bets, priority order:
-1. **Top-bar unification + tab back-stacks** (items 6–7) — finish the
-   navigation contract everywhere.
-2. **Backend service** (Firebase or Ktor — decide w/ PM): auth, daily,
-   leaderboard, duel, profile, friends endpoints.
+1. ~~**Top-bar unification + tab back-stacks** (items 6–7)~~ — DONE.
+2. **Backend service** — DECIDED: **Firebase, Spark (free, no card)**.
+   Client SDK + Firestore + Security Rules + Auth(anon) + FCM + Analytics;
+   **no Cloud Functions** (would force Blaze). Tradeoff: scores are
+   client-asserted, bounded by `firestore.rules`. Content pipeline runs as an
+   offline script, not a cron. *Leaderboard slice shipped (see Stub #3).*
+   Next: Daily online + Duel + profile/friends on the same model.
 3. **Daily Challenge online** — curated track per UTC day + live stats
    (item 4).
 4. **Async Duel** — 6-char share code, server-fixed track list, FCM result
@@ -125,11 +131,29 @@ Cross-cutting: RU-only strings, telemetry events, `Result<T>` network error
 states with manga retry panel, offline mode for solo modes, unit tests
 (`evaluateAchievements`, streak math, future `emojiGridFor`), CI lint+tests.
 
+## Firebase setup — one-time manual steps (console)
+
+The project already has `google-services.json` + Analytics/Crashlytics. To
+activate the leaderboard, in the Firebase console for this project:
+
+1. **Authentication → Sign-in method → Anonymous → Enable.**
+2. **Firestore Database → Create database** (Production mode, nearest region).
+3. **Deploy rules:** paste `firestore.rules` into Firestore → Rules (or
+   `firebase deploy --only firestore:rules`).
+4. (Auto) Firestore prompts to create the composite/single-field indexes the
+   first time the `orderBy(score)` + `count()` queries run — accept them.
+
+Until 1–3 are done the app degrades gracefully: the Топ tab shows the
+"Топ недоступен" offline panel with a retry button; runs still work and
+`submitScore` fails silently.
+
 ## Key files
 
 - Shell: `ui/composable/scaffold/MainScaffold.kt`
 - Home: `ui/composable/screen/GameModeMenuScreen.kt`
-- Leaderboard stub: `ui/composable/screen/LeaderboardScreen.kt`
+- Leaderboard: `ui/composable/screen/LeaderboardScreen.kt`,
+  `data/remote/LeaderboardRepository.kt`, `model/Leaderboard.kt`,
+  `firestore.rules`
 - Router: `navigation/AppNav.kt`, `navigation/Routes.kt`, `model/AppState.kt`
 - State: `QuizAppViewModel.kt`, `data/prefs/UserPrefs.kt`
 - Tokens/icons: `ui/theme/Tokens.kt`, `ui/composable/manga/MangaIcons.kt`

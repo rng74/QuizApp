@@ -18,6 +18,7 @@ import kz.yers.quiz.data.local.dao.RunHistoryDao
 import kz.yers.quiz.data.local.entity.DailyAttemptEntity
 import kz.yers.quiz.data.local.entity.RunHistoryEntity
 import kz.yers.quiz.data.prefs.UserPrefs
+import kz.yers.quiz.data.remote.LeaderboardRepository
 import kz.yers.quiz.model.A11yState
 import kz.yers.quiz.model.Achievements
 import kz.yers.quiz.model.AppState
@@ -28,6 +29,7 @@ import kz.yers.quiz.model.DuelState
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.HintInventory
 import kz.yers.quiz.model.HintType
+import kz.yers.quiz.model.LeaderboardUiState
 import kz.yers.quiz.model.ProfileState
 import kz.yers.quiz.model.QuestionHintState
 import kz.yers.quiz.model.QuizQuestion
@@ -44,6 +46,7 @@ class QuizAppViewModel(
     private val runHistoryDao: RunHistoryDao,
     private val dailyAttemptDao: DailyAttemptDao,
     private val userPrefs: UserPrefs,
+    private val leaderboard: LeaderboardRepository,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
@@ -135,8 +138,18 @@ class QuizAppViewModel(
         coins.intValue = userPrefs.coins.first()
     }
 
+    val leaderboardState = mutableStateOf<LeaderboardUiState>(LeaderboardUiState.Loading)
+
     fun openLeaderboard() {
         appState.value = AppState.Leaderboard
+        loadLeaderboard()
+    }
+
+    fun loadLeaderboard() {
+        leaderboardState.value = LeaderboardUiState.Loading
+        viewModelScope.launch {
+            leaderboardState.value = leaderboard.load()
+        }
     }
 
     val hintsAvailableForCurrentRun: Boolean
@@ -614,6 +627,13 @@ class QuizAppViewModel(
                     }
                 }
                 updateStreak()
+                if (!isDaily) {
+                    leaderboard.submitScore(
+                        name = userPrefs.userName.first(),
+                        score = finalScore,
+                        modeLabel = mode.shortLabel,
+                    )
+                }
             }
         }
 

@@ -16,6 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,45 +30,26 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kz.yers.quiz.model.LeaderboardEntry
+import kz.yers.quiz.model.LeaderboardUiState
+import kz.yers.quiz.ui.composable.manga.MangaButton
+import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
 
-private data class LbRow(
-    val rank: Int,
-    val name: String,
-    val meta: String,
-    val score: Int,
-    val medal: Medal? = null,
-    val isYou: Boolean = false,
-)
+private val PERIODS = listOf("День", "Неделя", "Месяц", "Все время")
 
-private enum class Medal { GOLD, SILVER, BRONZE }
-
-private val SAMPLE_ROWS =
-    listOf(
-        LbRow(1, "otaku_47", "Норм", 287, Medal.GOLD),
-        LbRow(2, "sakura_chan", "Изи", 264, Medal.SILVER),
-        LbRow(3, "shadow_kira", "Рандом", 251, Medal.BRONZE),
-        LbRow(4, "BasedSenpai", "Шарю", 239),
-        LbRow(5, "mori_neko", "Норм", 218),
-        LbRow(6, "bishounen", "Изи", 196),
-        LbRow(23, "Вы", "Норм · это вы", 42, isYou = true),
-    )
-
-private val PERIODS = listOf("Неделя", "День", "Месяц", "Все время")
-
-/**
- * Static stub of the global leaderboard ("Топ"). Period chips, the player's rank summary, and
- * a ranked list are hardcoded sample data — the real ranked feed is a backend concern
- * (see V2_REDESIGN_PLAN.md).
- */
 @Composable
-fun LeaderboardScreen() {
+fun LeaderboardScreen(
+    state: LeaderboardUiState,
+    onRetry: () -> Unit,
+) {
     Column(
         modifier =
             Modifier
@@ -77,15 +60,81 @@ fun LeaderboardScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            PERIODS.forEachIndexed { index, label ->
-                PeriodChip(label = label, selected = index == 0)
-            }
+            // Only "Все время" is backed by data for now (single best-score doc per player).
+            PERIODS.forEach { label -> PeriodChip(label = label, selected = label == "Все время") }
         }
 
-        YourRankCard()
+        when (state) {
+            LeaderboardUiState.Loading -> LoadingPanel()
+            LeaderboardUiState.Offline -> OfflinePanel(onRetry = onRetry)
+            is LeaderboardUiState.Loaded -> LoadedContent(state)
+        }
+    }
+}
 
+@Composable
+private fun LoadingPanel() {
+    Box(
+        modifier = Modifier.fillMaxWidth().height(220.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(color = QuizColors.tint, strokeWidth = 3.dp)
+    }
+}
+
+@Composable
+private fun OfflinePanel(onRetry: () -> Unit) {
+    OffsetShadowBox(
+        modifier = Modifier.fillMaxWidth(),
+        background = Color.White,
+        shadowOffset = QuizShadows.small,
+        radius = 12.dp,
+        border = QuizStrokes.panel,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Топ недоступен",
+                fontFamily = RussoOneFamily,
+                fontSize = 16.sp,
+                color = QuizColors.ink,
+            )
+            Text(
+                text = "Нет соединения. Проверьте интернет и попробуйте снова.",
+                fontSize = 13.sp,
+                color = QuizColors.ink.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+            )
+            MangaButton(
+                label = "ОБНОВИТЬ",
+                variant = MangaButtonVariant.Tint,
+                onClick = onRetry,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LoadedContent(state: LeaderboardUiState.Loaded) {
+    YourRankCard(myRank = state.myRank, myScore = state.myScore, total = state.totalPlayers)
+    if (state.rows.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "Пока никто не сыграл. Будьте первым!",
+                fontSize = 13.sp,
+                color = QuizColors.ink.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+            )
+        }
+    } else {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            SAMPLE_ROWS.forEach { LeaderboardRow(it) }
+            state.rows.forEach { LeaderboardRow(it) }
         }
     }
 }
@@ -104,7 +153,7 @@ private fun PeriodChip(
                 .border(QuizStrokes.regular, QuizColors.ink, shape)
                 .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
-        androidx.compose.material3.Text(
+        Text(
             text = label.uppercase(),
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
@@ -115,7 +164,11 @@ private fun PeriodChip(
 }
 
 @Composable
-private fun YourRankCard() {
+private fun YourRankCard(
+    myRank: Int?,
+    myScore: Int,
+    total: Int,
+) {
     OffsetShadowBox(
         modifier = Modifier.fillMaxWidth(),
         background = QuizColors.paper2,
@@ -137,15 +190,15 @@ private fun YourRankCard() {
                         .border(QuizStrokes.panel, QuizColors.ink, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                androidx.compose.material3.Text(
-                    text = "#23",
+                Text(
+                    text = myRank?.let { "#$it" } ?: "—",
                     fontFamily = RussoOneFamily,
                     fontSize = 14.sp,
                     color = Color.White,
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
-                androidx.compose.material3.Text(
+                Text(
                     text = "Ваше место",
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
@@ -153,8 +206,13 @@ private fun YourRankCard() {
                     color = QuizColors.ink.copy(alpha = 0.6f),
                 )
                 Spacer(Modifier.height(2.dp))
-                androidx.compose.material3.Text(
-                    text = "До топ-10: ещё 14 баллов",
+                Text(
+                    text =
+                        if (myRank == null) {
+                            "Сыграйте, чтобы попасть в топ"
+                        } else {
+                            "Счёт $myScore · игроков: $total"
+                        },
                     fontWeight = FontWeight.Medium,
                     fontSize = 11.sp,
                     color = QuizColors.ink.copy(alpha = 0.6f),
@@ -165,7 +223,7 @@ private fun YourRankCard() {
 }
 
 @Composable
-private fun LeaderboardRow(row: LbRow) {
+private fun LeaderboardRow(row: LeaderboardEntry) {
     OffsetShadowBox(
         modifier = Modifier.fillMaxWidth(),
         background = if (row.isYou) QuizColors.paper2 else Color.White,
@@ -178,23 +236,25 @@ private fun LeaderboardRow(row: LbRow) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            RankDisc(row)
+            RankDisc(row.rank)
             Column(modifier = Modifier.weight(1f)) {
-                androidx.compose.material3.Text(
-                    text = row.name,
+                Text(
+                    text = if (row.isYou) "Вы" else row.name,
                     fontWeight = FontWeight.Medium,
                     fontSize = 14.sp,
                     color = QuizColors.ink,
                 )
-                androidx.compose.material3.Text(
-                    text = row.meta.uppercase(),
-                    fontFamily = RussoOneFamily,
-                    fontSize = 12.sp,
-                    letterSpacing = 1.sp,
-                    color = QuizColors.ink.copy(alpha = 0.6f),
-                )
+                if (row.mode.isNotBlank()) {
+                    Text(
+                        text = row.mode.uppercase(),
+                        fontFamily = RussoOneFamily,
+                        fontSize = 12.sp,
+                        letterSpacing = 1.sp,
+                        color = QuizColors.ink.copy(alpha = 0.6f),
+                    )
+                }
             }
-            androidx.compose.material3.Text(
+            Text(
                 text = row.score.toString(),
                 fontFamily = RussoOneFamily,
                 fontSize = 20.sp,
@@ -205,13 +265,13 @@ private fun LeaderboardRow(row: LbRow) {
 }
 
 @Composable
-private fun RankDisc(row: LbRow) {
+private fun RankDisc(rank: Int) {
     val gradient =
-        when (row.medal) {
-            Medal.GOLD -> Brush.linearGradient(listOf(QuizColors.gold, QuizColors.goldDeep))
-            Medal.SILVER -> Brush.linearGradient(listOf(QuizColors.silver, QuizColors.silverDeep))
-            Medal.BRONZE -> Brush.linearGradient(listOf(QuizColors.bronze, QuizColors.bronzeDeep))
-            null -> Brush.linearGradient(listOf(QuizColors.paper2, QuizColors.paper2))
+        when (rank) {
+            1 -> Brush.linearGradient(listOf(QuizColors.gold, QuizColors.goldDeep))
+            2 -> Brush.linearGradient(listOf(QuizColors.silver, QuizColors.silverDeep))
+            3 -> Brush.linearGradient(listOf(QuizColors.bronze, QuizColors.bronzeDeep))
+            else -> Brush.linearGradient(listOf(QuizColors.paper2, QuizColors.paper2))
         }
     Box(
         modifier =
@@ -222,12 +282,12 @@ private fun RankDisc(row: LbRow) {
                 .border(QuizStrokes.regular, QuizColors.ink, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text(
-            text = row.rank.toString(),
+        Text(
+            text = rank.toString(),
             fontFamily = RussoOneFamily,
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
-            color = if (row.medal != null) Color.White else QuizColors.ink,
+            color = if (rank <= 3) Color.White else QuizColors.ink,
         )
     }
 }
@@ -237,9 +297,9 @@ private fun RankDisc(row: LbRow) {
 private fun OffsetShadowBox(
     modifier: Modifier = Modifier,
     background: Color = Color.White,
-    shadowOffset: androidx.compose.ui.unit.Dp = QuizShadows.small,
-    radius: androidx.compose.ui.unit.Dp = QuizRadii.button,
-    border: androidx.compose.ui.unit.Dp = QuizStrokes.regular,
+    shadowOffset: Dp = QuizShadows.small,
+    radius: Dp = QuizRadii.button,
+    border: Dp = QuizStrokes.regular,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(radius)
