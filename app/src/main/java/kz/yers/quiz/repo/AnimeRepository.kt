@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import kz.yers.quiz.HIGH_SCORE
 import kz.yers.quiz.model.AnimeInfo
 import kz.yers.quiz.model.QuizQuestion
+import kotlin.random.Random
 
 class AnimeRepository(
     private val context: Context,
@@ -60,6 +61,44 @@ class AnimeRepository(
         val correct = pool[index]
         val options = generateOptions(correct)
         return QuizQuestion(correctAnswer = correct, options = options)
+    }
+
+    /**
+     * Deterministic track for an async duel. The same [seed] produces the identical question
+     * order *and* option order on every device (the `info.json` asset is the shared source of
+     * truth), so two players answer exactly the same quiz without uploading any questions.
+     */
+    suspend fun getSeededQuestions(
+        seed: Long,
+        count: Int,
+        minRatingGt: Float,
+    ): List<QuizQuestion> {
+        if (animeList.isEmpty()) loadAnimeData()
+        val rng = Random(seed)
+        val pool =
+            animeList
+                .filter { it.rating > minRatingGt && it.albumName.endsWith("OP") }
+                .distinctBy { it.titleRu }
+                .shuffled(rng)
+        val total = minOf(count, pool.size)
+        return (0 until total).map { i ->
+            val correct = pool[i]
+            QuizQuestion(correctAnswer = correct, options = seededOptions(correct, rng))
+        }
+    }
+
+    private fun seededOptions(
+        correct: AnimeInfo,
+        rng: Random,
+    ): List<String> {
+        val distractors =
+            animeList
+                .filter { it.titleRu != correct.titleRu }
+                .map { it.titleRu }
+                .distinct()
+                .shuffled(rng)
+                .take(3)
+        return (distractors + correct.titleRu).shuffled(rng)
     }
 
     private suspend fun loadAnimeData() {

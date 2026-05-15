@@ -26,12 +26,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kz.yers.quiz.model.DuelPhase
+import kz.yers.quiz.model.DuelState
 import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
@@ -45,11 +49,13 @@ import kz.yers.quiz.ui.theme.RussoOneFamily
 
 @Composable
 fun DuelSetupScreen(
-    onStart: (String, String) -> Unit,
+    state: DuelState,
+    onCreate: () -> Unit,
+    onJoin: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    var nameOne by remember { mutableStateOf("") }
-    var nameTwo by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    val busy = state.phase == DuelPhase.Connecting
 
     Column(
         modifier =
@@ -61,19 +67,43 @@ fun DuelSetupScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(8.dp))
-        ImpactText(
-            text = "ДУЭЛЬ",
-            style = MaterialTheme.typography.displayMedium,
-        )
+        ImpactText(text = "ДУЭЛЬ", style = MaterialTheme.typography.displayMedium)
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Два игрока · одно устройство · одни вопросы",
+            text = "Сыграй с другом по коду — у вас одинаковые треки",
             color = QuizColors.ink,
             fontFamily = RussoOneFamily,
             fontSize = 12.sp,
             letterSpacing = 1.sp,
+            textAlign = TextAlign.Center,
         )
+        Spacer(Modifier.height(20.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MangaChip(label = "10 вопросов")
+            MangaChip(label = "Норм >8")
+            MangaChip(label = "Одни треки")
+        }
+
         Spacer(Modifier.height(24.dp))
+
+        MangaButton(
+            label = if (busy) "СОЗДАЁМ…" else "СОЗДАТЬ ИГРУ",
+            variant = MangaButtonVariant.Tint,
+            onClick = { if (!busy) onCreate() },
+            modifier = Modifier.fillMaxWidth(),
+            minHeight = 56.dp,
+        )
+
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = "ИЛИ ВОЙДИ ПО КОДУ",
+            fontFamily = RussoOneFamily,
+            fontSize = 11.sp,
+            letterSpacing = 1.5.sp,
+            color = QuizColors.ink.copy(alpha = 0.6f),
+        )
+        Spacer(Modifier.height(12.dp))
 
         MangaPanel(
             modifier = Modifier.fillMaxWidth(),
@@ -81,41 +111,30 @@ fun DuelSetupScreen(
             shadowOffset = QuizShadows.medium,
             contentPadding = 18.dp,
         ) {
-            Column {
-                PlayerNameField(
-                    label = "ИГРОК 1",
-                    value = nameOne,
-                    placeholder = "Игрок 1",
-                    onValueChange = { nameOne = it },
-                )
-                Spacer(Modifier.height(14.dp))
-                PlayerNameField(
-                    label = "ИГРОК 2",
-                    value = nameTwo,
-                    placeholder = "Игрок 2",
-                    onValueChange = { nameTwo = it },
-                )
-            }
+            CodeField(value = code, onValueChange = { code = it })
         }
 
-        Spacer(Modifier.height(20.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MangaChip(label = "10 вопросов")
-            MangaChip(label = "Норм >8")
-            MangaChip(label = "Сразу выбывание")
-        }
-
-        Spacer(Modifier.height(28.dp))
-
+        Spacer(Modifier.height(14.dp))
         MangaButton(
-            label = "НАЧАТЬ ДУЭЛЬ",
-            variant = MangaButtonVariant.Tint,
-            onClick = { onStart(nameOne, nameTwo) },
+            label = "ПРИСОЕДИНИТЬСЯ",
+            variant = MangaButtonVariant.Ghost,
+            onClick = { if (!busy) onJoin(code) },
             modifier = Modifier.fillMaxWidth(),
-            minHeight = 56.dp,
+            minHeight = 52.dp,
         )
-        Spacer(Modifier.height(12.dp))
+
+        if (state.phase == DuelPhase.Error && state.errorMessage != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = state.errorMessage,
+                color = QuizColors.modeShit,
+                fontFamily = RussoOneFamily,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
         MangaButton(
             label = "ОТМЕНА",
             variant = MangaButtonVariant.Ghost,
@@ -127,62 +146,56 @@ fun DuelSetupScreen(
 }
 
 @Composable
-private fun PlayerNameField(
-    label: String,
+private fun CodeField(
     value: String,
-    placeholder: String,
     onValueChange: (String) -> Unit,
 ) {
-    Column {
-        Text(
-            text = label,
-            fontFamily = RussoOneFamily,
-            fontSize = 11.sp,
-            letterSpacing = 1.5.sp,
-            color = QuizColors.ink.copy(alpha = 0.6f),
-        )
-        Spacer(Modifier.height(6.dp))
-        val shape = RoundedCornerShape(QuizRadii.button)
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(shape)
-                    .background(androidx.compose.ui.graphics.Color.White)
-                    .border(QuizStrokes.panel, QuizColors.ink, shape)
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            BasicTextField(
-                value = value,
-                onValueChange = { onValueChange(it.take(20)) },
-                singleLine = true,
-                cursorBrush = SolidColor(QuizColors.ink),
-                textStyle =
-                    TextStyle(
-                        color = QuizColors.ink,
+    val shape = RoundedCornerShape(QuizRadii.button)
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(Color.White)
+                .border(QuizStrokes.panel, QuizColors.ink, shape)
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicTextField(
+            value = value,
+            onValueChange = { raw ->
+                onValueChange(raw.filter { it.isLetterOrDigit() }.uppercase().take(6))
+            },
+            singleLine = true,
+            cursorBrush = SolidColor(QuizColors.ink),
+            textStyle =
+                TextStyle(
+                    color = QuizColors.ink,
+                    fontFamily = RussoOneFamily,
+                    fontSize = 28.sp,
+                    letterSpacing = 8.sp,
+                    textAlign = TextAlign.Center,
+                ),
+            keyboardOptions =
+                KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Characters,
+                    imeAction = ImeAction.Done,
+                ),
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { inner ->
+                if (value.isEmpty()) {
+                    Text(
+                        text = "______",
                         fontFamily = RussoOneFamily,
-                        fontSize = 16.sp,
-                        letterSpacing = 0.5.sp,
-                    ),
-                keyboardOptions =
-                    KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words,
-                        imeAction = ImeAction.Done,
-                    ),
-                modifier = Modifier.fillMaxWidth(),
-                decorationBox = { inner ->
-                    if (value.isEmpty()) {
-                        Text(
-                            text = placeholder,
-                            fontFamily = RussoOneFamily,
-                            fontSize = 16.sp,
-                            color = QuizColors.ink.copy(alpha = 0.35f),
-                        )
-                    }
-                    inner()
-                },
-            )
-        }
+                        fontSize = 28.sp,
+                        letterSpacing = 8.sp,
+                        color = QuizColors.ink.copy(alpha = 0.25f),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                inner()
+            },
+        )
     }
 }

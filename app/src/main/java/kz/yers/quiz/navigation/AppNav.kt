@@ -196,8 +196,11 @@ fun AppNavHost(
                 ProfileScreen(state = state)
             }
             composable(Routes.DUEL_SETUP) {
+                val state by viewModel.duelState
                 DuelSetupScreen(
-                    onStart = viewModel::startDuel,
+                    state = state,
+                    onCreate = viewModel::createDuel,
+                    onJoin = viewModel::joinDuel,
                     onBack = viewModel::backToMenu,
                 )
             }
@@ -205,7 +208,7 @@ fun AppNavHost(
                 val state by viewModel.duelState
                 DuelHandoffScreen(
                     state = state,
-                    onReady = viewModel::proceedFromDuelHandoff,
+                    onStart = viewModel::startDuelRound,
                     onExit = viewModel::exitDuel,
                 )
             }

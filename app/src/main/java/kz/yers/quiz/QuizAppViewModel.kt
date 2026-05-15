@@ -19,13 +19,17 @@ import kz.yers.quiz.data.local.entity.DailyAttemptEntity
 import kz.yers.quiz.data.local.entity.RunHistoryEntity
 import kz.yers.quiz.data.prefs.UserPrefs
 import kz.yers.quiz.data.remote.DailyStatsRepository
+import kz.yers.quiz.data.remote.DuelCreateResult
+import kz.yers.quiz.data.remote.DuelJoinResult
+import kz.yers.quiz.data.remote.DuelRepository
 import kz.yers.quiz.data.remote.LeaderboardRepository
 import kz.yers.quiz.model.A11yState
 import kz.yers.quiz.model.Achievements
 import kz.yers.quiz.model.AppState
 import kz.yers.quiz.model.DailyAttemptSummary
 import kz.yers.quiz.model.DailyState
-import kz.yers.quiz.model.DuelPlayer
+import kz.yers.quiz.model.DuelPhase
+import kz.yers.quiz.model.DuelRole
 import kz.yers.quiz.model.DuelState
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.HintInventory
@@ -49,6 +53,7 @@ class QuizAppViewModel(
     private val userPrefs: UserPrefs,
     private val leaderboard: LeaderboardRepository,
     private val dailyStats: DailyStatsRepository,
+    private val duel: DuelRepository,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
@@ -92,6 +97,7 @@ class QuizAppViewModel(
     private var isDuelRun = false
 
     val duelState = mutableStateOf(DuelState())
+    private var duelListenerJob: Job? = null
     val totalQuestionsInRun = mutableIntStateOf(30)
 
     val coins = mutableIntStateOf(240)
@@ -300,55 +306,148 @@ class QuizAppViewModel(
 
     fun openDuelSetup() {
         isDuelRun = false
+        duelListenerJob?.cancel()
+        duelListenerJob = null
         duelState.value = DuelState()
         appState.value = AppState.DuelSetup
     }
 
-    fun startDuel(
-        playerOneName: String,
-        playerTwoName: String,
-    ) {
-        val name1 = playerOneName.trim().ifBlank { "Игрок 1" }
-        val name2 = playerTwoName.trim().ifBlank { "Игрок 2" }
-        duelState.value =
-            DuelState(
-                players = listOf(DuelPlayer(name1), DuelPlayer(name2)),
-                currentPlayerIndex = 0,
-            )
+    /** Host: allocate a unique code and open the lobby. Stays on setup with an error if offline. */
+    fun createDuel() {
+        duelState.value = duelState.value.copy(phase = DuelPhase.Connecting, errorMessage = null)
+        viewModelScope.launch {
+            val name = userPrefs.userName.first().ifBlank { "Игрок" }
+            when (val res = duel.create(name)) {
+                is DuelCreateResult.Ok -> {
+                    duelState.value =
+                        DuelState(
+                            phase = DuelPhase.Lobby,
+                            code = res.code,
+                            role = DuelRole.HOST,
+                            seed = res.seed,
+                            myName = name,
+                        )
+                    observeDuel(res.code)
+                    appState.value = AppState.DuelHandoff
+                }
+
+                DuelCreateResult.Offline ->
+                    duelState.value =
+                        duelState.value.copy(
+                            phase = DuelPhase.Error,
+                            errorMessage = "Нет соединения. Попробуйте позже.",
+                        )
+            }
+        }
+    }
+
+    /** Guest: claim the code's open slot and open the lobby. */
+    fun joinDuel(rawCode: String) {
+        val code = rawCode.trim().uppercase()
+        if (code.length != 6) {
+            duelState.value =
+                duelState.value.copy(phase = DuelPhase.Error, errorMessage = "Код из 6 символов.")
+            return
+        }
+        duelState.value = duelState.value.copy(phase = DuelPhase.Connecting, errorMessage = null)
+        viewModelScope.launch {
+            val name = userPrefs.userName.first().ifBlank { "Игрок" }
+            when (val res = duel.join(code, name)) {
+                is DuelJoinResult.Ok -> {
+                    duelState.value =
+                        DuelState(
+                            phase = DuelPhase.Lobby,
+                            code = code,
+                            role = DuelRole.GUEST,
+                            seed = res.seed,
+                            myName = name,
+                            opponentName = res.hostName,
+                        )
+                    observeDuel(code)
+                    appState.value = AppState.DuelHandoff
+                }
+
+                DuelJoinResult.NotFound ->
+                    duelState.value =
+                        duelState.value.copy(
+                            phase = DuelPhase.Error,
+                            errorMessage = "Игра с таким кодом не найдена.",
+                        )
+
+                DuelJoinResult.Full ->
+                    duelState.value =
+                        duelState.value.copy(
+                            phase = DuelPhase.Error,
+                            errorMessage = "В этой игре уже два игрока.",
+                        )
+
+                DuelJoinResult.Offline ->
+                    duelState.value =
+                        duelState.value.copy(
+                            phase = DuelPhase.Error,
+                            errorMessage = "Нет соединения. Попробуйте позже.",
+                        )
+            }
+        }
+    }
+
+    private fun observeDuel(code: String) {
+        duelListenerJob?.cancel()
+        duelListenerJob =
+            viewModelScope.launch {
+                duel.listen(code).collect { snap ->
+                    if (snap == null) return@collect
+                    val s = duelState.value
+                    val isHost = s.role == DuelRole.HOST
+                    duelState.value =
+                        s.copy(
+                            opponentName =
+                                (if (isHost) snap.guestName else snap.hostName) ?: s.opponentName,
+                            opponentScore = if (isHost) snap.guestScore else snap.hostScore,
+                            myScore = (if (isHost) snap.hostScore else snap.guestScore) ?: s.myScore,
+                        )
+                }
+            }
+    }
+
+    /** From the lobby: load the shared seed-deterministic track and start this device's round. */
+    fun startDuelRound() {
+        val s = duelState.value
+        if (s.code.isBlank()) {
+            appState.value = AppState.Menu
+            return
+        }
         isDuelRun = true
         isDailyRun = false
         activeMode.value = GameMode.NORMAL
         score.intValue = 0
         userAnswer.value = null
+        questionHintState.value = QuestionHintState()
+        skipRequested = false
         appState.value = AppState.Loading
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                quizQuestions = repository.getRandomizedQuestionsGt(DuelState.DUEL_QUESTIONS, 7.5f)
+                quizQuestions =
+                    repository.getSeededQuestions(s.seed, DuelState.DUEL_QUESTIONS, 7.5f)
             }
-            totalQuestionsInRun.intValue = quizQuestions.size.coerceAtLeast(1)
-            appState.value = AppState.DuelHandoff
+            if (quizQuestions.isEmpty()) {
+                appState.value = AppState.DuelHandoff
+                return@launch
+            }
+            totalQuestionsInRun.intValue = quizQuestions.size
+            runStartElapsedMs = SystemClock.elapsedRealtime()
+            appState.value =
+                AppState.Quiz(
+                    currentQuestion = quizQuestions[0],
+                    currentQuestionIndex = 0,
+                )
         }
-    }
-
-    fun proceedFromDuelHandoff() {
-        if (!isDuelRun || quizQuestions.isEmpty()) {
-            appState.value = AppState.Menu
-            return
-        }
-        score.intValue = 0
-        userAnswer.value = null
-        questionHintState.value = QuestionHintState()
-        skipRequested = false
-        runStartElapsedMs = SystemClock.elapsedRealtime()
-        appState.value =
-            AppState.Quiz(
-                currentQuestion = quizQuestions[0],
-                currentQuestionIndex = 0,
-            )
     }
 
     fun exitDuel() {
         isDuelRun = false
+        duelListenerJob?.cancel()
+        duelListenerJob = null
         duelState.value = DuelState()
         score.intValue = 0
         userAnswer.value = null
@@ -703,21 +802,17 @@ class QuizAppViewModel(
 
     private fun finishDuelTurn(finalScore: Int) {
         val state = duelState.value
-        val index = state.currentPlayerIndex
-        val answered =
-            (appState.value as? AppState.Quiz)?.let { it.currentQuestionIndex + 1 }
-                ?: state.totalQuestions
-        val updatedPlayers =
-            state.players.toMutableList().also { list ->
-                list[index] = list[index].copy(score = finalScore, answeredQuestions = answered)
+        duelState.value = state.copy(phase = DuelPhase.Finished, myScore = finalScore)
+        isDuelRun = false
+        appState.value = AppState.DuelResult
+        if (state.code.isNotBlank()) {
+            viewModelScope.launch {
+                duel.submitScore(
+                    code = state.code,
+                    isHost = state.role == DuelRole.HOST,
+                    score = finalScore,
+                )
             }
-        if (index == 0) {
-            duelState.value =
-                state.copy(players = updatedPlayers, currentPlayerIndex = 1)
-            appState.value = AppState.DuelHandoff
-        } else {
-            duelState.value = state.copy(players = updatedPlayers)
-            appState.value = AppState.DuelResult
         }
     }
 

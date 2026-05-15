@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,14 +63,15 @@ fun DuelResultScreen(
     onPlayAgain: () -> Unit,
     onExit: () -> Unit,
 ) {
+    val both = state.bothFinished
     val winnerIndex = state.winnerIndex
     val title =
-        when (winnerIndex) {
-            0, 1 -> "ПОБЕДА!"
+        when {
+            !both -> "ГОТОВО"
+            winnerIndex == 0 -> "ПОБЕДА!"
+            winnerIndex == 1 -> "ПОРАЖЕНИЕ"
             else -> "НИЧЬЯ"
         }
-    val subtitle =
-        winnerIndex?.let { "Победил ${state.players[it].name}" } ?: "Счёт совпал"
 
     Column(
         modifier =
@@ -90,44 +92,58 @@ fun DuelResultScreen(
             ImpactText(
                 text = title,
                 style = MaterialTheme.typography.displayMedium,
-                tintColor = QuizColors.streakFire,
+                tintColor = if (winnerIndex == 0 || !both) QuizColors.streakFire else QuizColors.ink,
             )
         }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = subtitle.uppercase(),
-            fontFamily = RussoOneFamily,
-            fontSize = 13.sp,
-            letterSpacing = 1.5.sp,
-            color = QuizColors.ink.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             PlayerScoreCard(
-                name = state.players[0].name,
-                score = state.players[0].score,
-                isWinner = winnerIndex == 0,
+                name = "Вы",
+                score = state.myScore,
+                isWinner = both && winnerIndex == 0,
                 accent = QuizColors.modeEasy,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             PlayerScoreCard(
-                name = state.players[1].name,
-                score = state.players[1].score,
-                isWinner = winnerIndex == 1,
+                name = state.opponentName ?: "Соперник",
+                score = state.opponentScore,
+                isWinner = both && winnerIndex == 1,
                 accent = QuizColors.modeShit,
+                waiting = state.opponentScore == null,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
         }
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(16.dp))
+        if (!both) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(
+                    color = QuizColors.tint,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.size(10.dp))
+                Text(
+                    text =
+                        if (state.opponentName == null) {
+                            "Соперник ещё не присоединился"
+                        } else {
+                            "Ждём результат соперника…"
+                        },
+                    fontFamily = RussoOneFamily,
+                    fontSize = 12.sp,
+                    color = QuizColors.ink.copy(alpha = 0.7f),
+                )
+            }
+        }
 
+        Spacer(Modifier.height(32.dp))
         MangaButton(
-            label = "ЕЩЁ РАЗ",
+            label = "НОВАЯ ДУЭЛЬ",
             variant = MangaButtonVariant.Tint,
             onClick = onPlayAgain,
             modifier = Modifier.fillMaxWidth(),
@@ -147,10 +163,11 @@ fun DuelResultScreen(
 @Composable
 private fun PlayerScoreCard(
     name: String,
-    score: Int,
+    score: Int?,
     isWinner: Boolean,
     accent: Color,
     modifier: Modifier,
+    waiting: Boolean = false,
 ) {
     MangaPanel(
         modifier = modifier,
@@ -192,7 +209,7 @@ private fun PlayerScoreCard(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = score.toString(),
+                text = if (waiting || score == null) "…" else score.toString(),
                 fontFamily = BangersFamily,
                 fontSize = 44.sp,
                 color = if (isWinner) QuizColors.accentBlue else QuizColors.ink,

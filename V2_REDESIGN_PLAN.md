@@ -111,12 +111,36 @@ The "ドン!!" SFX uses Bangers (Permanent Marker is not bundled).
 **Optional:** port `mode-*.svg` / `hero-daily.svg` to vectors; add Permanent
 Marker to `res/font/` for authentic SFX lettering.
 
+### 9. Async Duel — IMPLEMENTED (no cross-app push)
+Local hot-seat duel was **replaced** by a code-based async duel on the same
+Firebase Spark model. `DuelRepository`: anon auth + `duels/{code}` doc —
+`create()` allocates a unique 6-char code (create-if-absent transaction) and a
+random `seed`; `join()` claims the guest slot (handles not-found / room-full);
+`submitScore()` writes only this device's score, once; `listen()` is a
+`callbackFlow` Firestore snapshot listener. The track is
+`AnimeRepository.getSeededQuestions(seed,…)` — `Random(seed)` makes the
+question *and* option order identical on both devices with nothing uploaded
+(the `info.json` asset is the shared source of truth). Flow: Setup
+(create / join-by-code) → Lobby (big code + system share-sheet + waiting) →
+solo round → Result (live "ждём соперника…" → winner, updated by the
+listener). Security in `firestore.rules` (`duels/{code}`: host-owned create,
+one-time guest join, each side writes only its own score, field-diff bounded).
+Degrades gracefully: offline/unprovisioned → error message on Setup, no crash.
+**Remaining (the documented gap):** a push when the opponent finishes while
+you're *not* on the result screen is impossible on Spark — sending FCM needs a
+server (Admin SDK / Cloud Functions / HTTP v1 + service account). The
+in-app realtime listener covers the both-present case; the offline-notify case
+needs Blaze + a Function (or any tiny server) and is deliberately out of scope.
+Also: no room TTL/cleanup (stale `duels` docs accumulate — a future offline
+sweep script or a Blaze scheduled Function); rejoin after process death isn't
+restored (the code/role aren't persisted).
+
 ## Larger v2 scope (from the design README BUILD PLAN, reconciled)
 
 Already present in the codebase: Navigation-Compose, Room
 (`RunHistory`/`DailyAttempt`), DataStore (`UserPrefs`), manga primitive
-library, Onboarding, Daily Challenge, Duel (local hot-seat), Profile +
-achievements, hints + rewarded-ad scaffolding, accessibility flags.
+library, Onboarding, Daily Challenge, Duel (async/code-based — Stub #9),
+Profile + achievements, hints + rewarded-ad scaffolding, accessibility flags.
 
 Remaining bets, priority order:
 1. ~~**Top-bar unification + tab back-stacks** (items 6–7)~~ — DONE.
@@ -129,8 +153,9 @@ Remaining bets, priority order:
 3. ~~**Daily Challenge online** — live stats (item 4)~~ — DONE (shared
    stats shipped on the Firebase model; deterministic track stands in until
    the content pipeline curates one, priority #8).
-4. **Async Duel** — 6-char share code, server-fixed track list, FCM result
-   push (current Duel is local hot-seat only).
+4. ~~**Async Duel** — 6-char share code + shared track + result sync~~ —
+   DONE (replaced hot-seat; realtime listener instead of FCM — see Stub #9.
+   Cross-app push remains out of scope on Spark).
 5. **Hint Shop + coin economy + AdMob** (items 1–2).
 6. **Share v2** — Wordle-style emoji grid (`🟩🟥` spoiler-safe) +
    "побей мой результат" challenge link (`v2-extras.html` slide 08).
@@ -170,6 +195,10 @@ Until 1–3 are done the app degrades gracefully: the Топ tab shows the
   `model/DailyState.kt` (`DailyLiveStats`),
   `ui/composable/screen/DailyChallengeScreen.kt`,
   `ui/composable/screen/GameModeMenuScreen.kt`, `firestore.rules`
+- Async duel: `data/remote/DuelRepository.kt`, `model/DuelState.kt`,
+  `repo/AnimeRepository.kt` (`getSeededQuestions`),
+  `ui/composable/screen/DuelSetupScreen.kt` / `DuelHandoffScreen.kt` /
+  `DuelResultScreen.kt`, `firestore.rules`
 - Router: `navigation/AppNav.kt`, `navigation/Routes.kt`, `model/AppState.kt`
 - State: `QuizAppViewModel.kt`, `data/prefs/UserPrefs.kt`
 - Tokens/icons: `ui/theme/Tokens.kt`, `ui/composable/manga/MangaIcons.kt`

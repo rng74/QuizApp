@@ -1,6 +1,9 @@
 package kz.yers.quiz.ui.composable.screen
 
-import androidx.compose.foundation.Image
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -11,9 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,23 +22,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kz.yers.quiz.R
+import kz.yers.quiz.model.DuelRole
 import kz.yers.quiz.model.DuelState
 import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
-import kz.yers.quiz.ui.composable.manga.MangaChip
-import kz.yers.quiz.ui.composable.manga.MangaChipVariant
-import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.composable.manga.SpeechBubble
 import kz.yers.quiz.ui.theme.BangersFamily
@@ -46,25 +39,15 @@ import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
 
-private val BadgeGlyphStyle =
-    TextStyle(
-        platformStyle = PlatformTextStyle(includeFontPadding = false),
-        lineHeightStyle =
-            LineHeightStyle(
-                alignment = LineHeightStyle.Alignment.Center,
-                trim = LineHeightStyle.Trim.Both,
-            ),
-    )
-
 @Composable
 fun DuelHandoffScreen(
     state: DuelState,
-    onReady: () -> Unit,
+    onStart: () -> Unit,
     onExit: () -> Unit,
 ) {
-    val current = state.currentPlayer
-    val isSecondTurn = state.currentPlayerIndex == 1
-    val firstPlayer = state.players[0]
+    val context = LocalContext.current
+    val isHost = state.role == DuelRole.HOST
+    val opponentJoined = state.opponentName != null
 
     Column(
         modifier =
@@ -76,26 +59,15 @@ fun DuelHandoffScreen(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = if (isSecondTurn) "ХОД 2 / 2" else "ХОД 1 / 2",
+            text = if (isHost) "ВЫ СОЗДАЛИ ИГРУ" else "ВЫ ВОШЛИ В ИГРУ",
             fontFamily = RussoOneFamily,
             fontSize = 12.sp,
             letterSpacing = 2.sp,
             color = QuizColors.ink.copy(alpha = 0.6f),
         )
         Spacer(Modifier.height(8.dp))
-        Box(contentAlignment = Alignment.Center) {
-            Image(
-                modifier = Modifier.height(180.dp).fillMaxWidth().padding(top = 16.dp),
-                contentScale = ContentScale.FillWidth,
-                painter = painterResource(id = R.drawable.burst),
-                contentDescription = null,
-            )
-            ImpactText(
-                text = "ПЕРЕДАЙ ТЕЛЕФОН",
-                style = MaterialTheme.typography.displaySmall,
-            )
-        }
-        Spacer(Modifier.height(24.dp))
+        ImpactText(text = "КОД ИГРЫ", style = MaterialTheme.typography.displaySmall)
+        Spacer(Modifier.height(20.dp))
 
         MangaPanel(
             modifier = Modifier.fillMaxWidth(),
@@ -106,66 +78,49 @@ fun DuelHandoffScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                AvatarBadge(initial = current.name.firstOrNull()?.uppercase() ?: "?")
-                Spacer(Modifier.height(8.dp))
-                Icon(
-                    imageVector = MangaIcons.Swords,
-                    contentDescription = null,
-                    tint = QuizColors.ink,
-                    modifier = Modifier.size(28.dp),
-                )
-                Spacer(Modifier.height(8.dp))
+                CodeBox(state.code)
+                Spacer(Modifier.height(16.dp))
                 Text(
-                    text = "ХОДИТ",
+                    text =
+                        when {
+                            !isHost -> "Игра: ${state.opponentName}"
+                            opponentJoined -> "Соперник: ${state.opponentName}"
+                            else -> "Ждём второго игрока…"
+                        },
                     fontFamily = RussoOneFamily,
-                    fontSize = 11.sp,
-                    letterSpacing = 1.5.sp,
-                    color = QuizColors.ink.copy(alpha = 0.6f),
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = current.name.uppercase(),
-                    fontFamily = BangersFamily,
-                    fontSize = 36.sp,
-                    letterSpacing = 1.sp,
-                    color = QuizColors.ink,
+                    fontSize = 13.sp,
+                    letterSpacing = 0.5.sp,
+                    color = QuizColors.ink.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
-                    style = BadgeGlyphStyle,
                 )
-                Spacer(Modifier.height(12.dp))
-                if (isSecondTurn) {
-                    MangaChip(
-                        label = "${firstPlayer.name}: ${firstPlayer.score} очков",
-                        variant = MangaChipVariant.Ink,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = "Догони результат соперника!",
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        color = QuizColors.ink.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                    )
-                } else {
-                    Text(
-                        text = "Те же ${state.totalQuestions} треков для обоих игроков.",
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                        color = QuizColors.ink.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                    )
-                }
             }
         }
 
-        Spacer(Modifier.height(20.dp))
-        SpeechBubble(text = "Готов? Жми «Я готов» — таймер стартует сразу.")
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(16.dp))
+        SpeechBubble(
+            text =
+                if (isHost) {
+                    "Отправь код другу. Можешь играть свой раунд сразу — счёт сверится потом."
+                } else {
+                    "Те же ${state.totalQuestions} треков, что и у соперника. Готов?"
+                },
+        )
+        Spacer(Modifier.height(28.dp))
 
+        if (isHost) {
+            MangaButton(
+                label = "ПОДЕЛИТЬСЯ КОДОМ",
+                variant = MangaButtonVariant.Ghost,
+                onClick = { shareCode(context, state.code) },
+                modifier = Modifier.fillMaxWidth(),
+                minHeight = 52.dp,
+            )
+            Spacer(Modifier.height(12.dp))
+        }
         MangaButton(
-            label = "Я ГОТОВ",
+            label = "НАЧАТЬ РАУНД",
             variant = MangaButtonVariant.Tint,
-            onClick = onReady,
+            onClick = onStart,
             modifier = Modifier.fillMaxWidth(),
             minHeight = 56.dp,
         )
@@ -181,23 +136,39 @@ fun DuelHandoffScreen(
 }
 
 @Composable
-private fun AvatarBadge(initial: String) {
+private fun CodeBox(code: String) {
+    val shape = RoundedCornerShape(12.dp)
     Box(
         modifier =
             Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(QuizColors.tint)
-                .border(QuizStrokes.panel, QuizColors.ink, CircleShape),
+                .clip(shape)
+                .background(QuizColors.ink)
+                .border(QuizStrokes.panel, QuizColors.ink, shape)
+                .padding(horizontal = 28.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = initial,
+            text = code,
             fontFamily = BangersFamily,
-            fontSize = 40.sp,
+            fontSize = 44.sp,
+            letterSpacing = 10.sp,
             color = Color.White,
             textAlign = TextAlign.Center,
-            style = BadgeGlyphStyle,
         )
     }
+}
+
+private fun shareCode(
+    context: Context,
+    code: String,
+) {
+    val msg = "Сыграй со мной в АНИМЕ КВИЗ! Код дуэли: $code"
+    (context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+        ?.setPrimaryClip(ClipData.newPlainText("duel code", code))
+    val send =
+        Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, msg)
+        }
+    context.startActivity(Intent.createChooser(send, "Поделиться кодом"))
 }

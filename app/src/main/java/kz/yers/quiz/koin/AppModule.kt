@@ -7,6 +7,7 @@ import kz.yers.quiz.QuizAppViewModel
 import kz.yers.quiz.data.local.AppDatabase
 import kz.yers.quiz.data.prefs.UserPrefs
 import kz.yers.quiz.data.remote.DailyStatsRepository
+import kz.yers.quiz.data.remote.DuelRepository
 import kz.yers.quiz.data.remote.LeaderboardRepository
 import kz.yers.quiz.repo.AnimeRepository
 import org.koin.android.ext.koin.androidContext
@@ -26,5 +27,6 @@ val appModule =
         single { AnimeRepository(androidContext(), get(), get()) }
         single { LeaderboardRepository() }
         single { DailyStatsRepository() }
-        viewModel { QuizAppViewModel(get(), get(), get(), get(), get(), get()) }
+        single { DuelRepository() }
+        viewModel { QuizAppViewModel(get(), get(), get(), get(), get(), get(), get()) }
     }

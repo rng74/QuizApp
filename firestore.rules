@@ -51,6 +51,56 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Anime Quiz — async Duel. One doc per 6-char room code. No Cloud Functions: the host
+    // creates the room, the guest claims the empty slot, and each side writes only its own
+    // score exactly once. Track is seed-deterministic client-side (nothing sensitive stored).
+    match /duels/{code} {
+      allow read: if request.auth != null;
+
+      // Host creates the room owning the doc; both score slots start empty.
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(
+             ['hostUid', 'hostName', 'seed', 'guestUid', 'guestName', 'createdAt'])
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.hostName is string
+        && request.resource.data.hostName.size() <= 24
+        && request.resource.data.seed is int
+        && request.resource.data.guestUid == ''
+        && request.resource.data.guestName == '';
+
+      allow update: if request.auth != null && (
+          // (a) Guest claims the still-empty slot.
+          (
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['guestUid', 'guestName'])
+            && resource.data.guestUid == ''
+            && request.resource.data.guestUid == request.auth.uid
+            && request.resource.data.guestName is string
+            && request.resource.data.guestName.size() <= 24
+          )
+          // (b) Host writes its own score, once.
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hostScore'])
+            && request.auth.uid == resource.data.hostUid
+            && !('hostScore' in resource.data)
+            && request.resource.data.hostScore is int
+            && request.resource.data.hostScore >= 0
+            && request.resource.data.hostScore <= 100000
+          )
+          // (c) Guest writes its own score, once.
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guestScore'])
+            && request.auth.uid == resource.data.guestUid
+            && !('guestScore' in resource.data)
+            && request.resource.data.guestScore is int
+            && request.resource.data.guestScore >= 0
+            && request.resource.data.guestScore <= 100000
+          )
+        );
+
+      allow delete: if false;
+    }
+
     // Everything else is closed until its own rules are written.
     match /{document=**} {
       allow read, write: if false;
