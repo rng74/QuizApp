@@ -18,6 +18,8 @@
     <string name="share_cancel">Отмена</string>
     <string name="share_caption">Мой счёт в АНИМЕ КВИЗ — %1$d!</string>
     <string name="share_chooser_title">Поделиться счётом</string>
+    <string name="share_as_text">Текстом</string>
+    <string name="share_as_image">Картинкой</string>
     <string name="hint_fifty_fifty">50 / 50</string>
     <string name="hint_reveal_letter">Буква</string>
     <string name="hint_skip">Пропустить</string>

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,8 +29,10 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
@@ -39,8 +42,11 @@ import kz.yers.quiz.R
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.theme.QuizColors
+import kz.yers.quiz.utils.buildScoreShareText
+import kz.yers.quiz.utils.emojiGridFor
 import kz.yers.quiz.utils.saveBitmapToCache
 import kz.yers.quiz.utils.shareImage
+import kz.yers.quiz.utils.shareText
 
 private const val SHARE_OUTPUT_PX = 1080
 
@@ -50,12 +56,16 @@ fun ShareResultDialog(
     isNewRecord: Boolean,
     modeTint: Color,
     modeDisplayName: String?,
+    correct: Int,
+    total: Int,
+    isDaily: Boolean,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val captionText = stringResource(R.string.share_caption, score)
     val chooserTitle = stringResource(R.string.share_chooser_title)
+    val gridPreview = remember(correct, total) { emojiGridFor(correct, total) }
     val layer = rememberGraphicsLayer()
     var sharing by remember { mutableStateOf(false) }
 
@@ -97,10 +107,18 @@ fun ShareResultDialog(
                         size = cardSize,
                     )
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = gridPreview,
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    lineHeight = 26.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     MangaButton(
                         label = stringResource(R.string.share_cancel),
@@ -109,7 +127,27 @@ fun ShareResultDialog(
                         modifier = Modifier.weight(1f),
                     )
                     MangaButton(
-                        label = stringResource(R.string.share_button),
+                        label = stringResource(R.string.share_as_text),
+                        variant = MangaButtonVariant.Ghost,
+                        onClick = {
+                            shareText(
+                                context = context,
+                                text =
+                                    buildScoreShareText(
+                                        score = score,
+                                        correct = correct,
+                                        total = total,
+                                        isDaily = isDaily,
+                                        modeName = modeDisplayName,
+                                    ),
+                                chooserTitle = chooserTitle,
+                            )
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                    MangaButton(
+                        label = stringResource(R.string.share_as_image),
                         variant = MangaButtonVariant.Tint,
                         enabled = !sharing,
                         onClick = {
