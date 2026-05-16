@@ -1,6 +1,7 @@
 package kz.yers.quiz
 
 import android.app.Application
+import com.google.android.gms.ads.MobileAds
 import kz.yers.quiz.koin.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -13,5 +14,7 @@ class MyApplication : Application() {
             androidContext(this@MyApplication)
             modules(appModule)
         }
+
+        MobileAds.initialize(this)
     }
 }

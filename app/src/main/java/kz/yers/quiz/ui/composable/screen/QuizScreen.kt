@@ -67,7 +67,7 @@ import kz.yers.quiz.model.QuizQuestion
 import kz.yers.quiz.ui.composable.AudioPlayer
 import kz.yers.quiz.ui.composable.BlurredImage
 import kz.yers.quiz.ui.composable.hints.HintBar
-import kz.yers.quiz.ui.composable.hints.RewardedAdDialog
+import kz.yers.quiz.ui.composable.hints.RewardedAdEffect
 import kz.yers.quiz.ui.composable.manga.ImpactText
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
@@ -443,12 +443,11 @@ fun QuizScreen(
             }
         }
 
-        if (pendingAdType != null) {
-            RewardedAdDialog(
-                onComplete = onAdComplete,
-                onCancel = onAdCancel,
-            )
-        }
+        RewardedAdEffect(
+            active = pendingAdType != null,
+            onReward = onAdComplete,
+            onDismiss = onAdCancel,
+        )
 
         if (showExitDialog) {
             AlertDialog(

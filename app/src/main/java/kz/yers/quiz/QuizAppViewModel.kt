@@ -109,6 +109,9 @@ class QuizAppViewModel(
     val questionHintState = mutableStateOf(QuestionHintState())
     val pendingRewardedAd = mutableStateOf<HintType?>(null)
     val resultWasDaily = mutableStateOf(false)
+    val lastRunCoins = mutableIntStateOf(0)
+    val lastRunCorrect = mutableIntStateOf(0)
+    val lastRunTotal = mutableIntStateOf(0)
     private var skipRequested = false
 
     init {
@@ -247,6 +250,20 @@ class QuizAppViewModel(
 
     fun openSettings() {
         appState.value = AppState.Settings
+    }
+
+    fun openShop() {
+        appState.value = AppState.Shop
+    }
+
+    /** Spend coins on a hint. No-op if the player can't afford it. */
+    fun buyHintWithCoins(type: HintType) {
+        val price = type.coinPrice
+        if (coins.intValue < price) return
+        val newTotal = coins.intValue - price
+        coins.intValue = newTotal
+        viewModelScope.launch { userPrefs.setCoins(newTotal) }
+        persistHintInventory(hintInventory.value.withIncrement(type))
     }
 
     fun setSoundEnabled(value: Boolean) {
@@ -716,6 +733,12 @@ class QuizAppViewModel(
         val correct =
             currentQuestion != null && userAnswer.value == currentQuestion.correctAnswer.titleRu
 
+        val answeredIndex = (appState.value as? AppState.Quiz)?.currentQuestionIndex ?: 0
+        val total = totalQuestionsInRun.intValue
+        lastRunCorrect.intValue =
+            (if (correct) answeredIndex + 1 else answeredIndex).coerceIn(0, total)
+        lastRunTotal.intValue = total
+
         if (mode != null) {
             viewModelScope.launch {
                 withContext(Dispatchers.IO) {
@@ -739,7 +762,14 @@ class QuizAppViewModel(
                         )
                     }
                 }
-                updateStreak()
+                val streakBonus = updateStreak()
+                val earned = finalScore / COINS_PER_SCORE + streakBonus
+                if (earned > 0) {
+                    val newTotal = userPrefs.coins.first() + earned
+                    userPrefs.setCoins(newTotal)
+                    coins.intValue = newTotal
+                }
+                lastRunCoins.intValue = earned
                 if (!isDaily) {
                     leaderboard.submitScore(
                         name = userPrefs.userName.first(),
@@ -759,10 +789,13 @@ class QuizAppViewModel(
         appState.value = AppState.Result
     }
 
-    private suspend fun updateStreak() {
+    /** Advances the daily streak; returns the streak-milestone coin bonus (0 unless a new
+     *  7-day multiple was just reached today). */
+    private suspend fun updateStreak(): Int {
         val today = LocalDate.now(ZoneId.systemDefault()).toEpochDay()
         val lastPlayed = userPrefs.lastPlayedEpochDay.first()
         val current = userPrefs.currentStreakDays.first()
+        val advanced = lastPlayed != today
         val next =
             when {
                 lastPlayed == today -> current
@@ -770,6 +803,7 @@ class QuizAppViewModel(
                 else -> 1
             }
         userPrefs.setStreak(next, today)
+        return if (advanced && next > 0 && next % STREAK_BONUS_EVERY == 0) STREAK_BONUS_COINS else 0
     }
 
     /** Quit mid-game from the immersive quiz: forfeit — no run recorded, no high score written. */
@@ -819,5 +853,8 @@ class QuizAppViewModel(
     companion object {
         private const val MAX_SCORE_PER_RUN = 300
         private const val XP_PER_LEVEL = 1000
+        private const val COINS_PER_SCORE = 5
+        private const val STREAK_BONUS_COINS = 50
+        private const val STREAK_BONUS_EVERY = 7
     }
 }

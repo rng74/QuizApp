@@ -35,13 +35,25 @@ and **Leaderboard** only).
 
 ## Stubs → how to make them real
 
-### 1. Coins economy — STUB
-`UserPrefs.coins` defaults to 240; the coins pill is read-only and the shop
-tap is a no-op (`onOpenShop = {}` in `AppNav.kt`).
-**Real:** award `score / 5` per run + daily/weekly bonuses in `finishRun()` /
-`updateStreak()`; build the Hint Shop screen (`v2-extras.html` slide 07) —
-4 hint cards with `Купить` (deduct coins) + `Бесплатно за рекламу` (AdMob
-`RewardedAd`); wire `onOpenShop` to it; spend coins on `HintInventory`.
+### 1. Coins economy + Hint Shop + AdMob — IMPLEMENTED
+Earning: `finishRun()` awards `score / COINS_PER_SCORE` (5) per non-duel run
+plus a `STREAK_BONUS_COINS` (50) bonus every 7th streak day (returned by
+`updateStreak()`); persisted via `UserPrefs.setCoins`, shown as "+N МОНЕТ"
+on the Result screen, and the top-bar coins pill reflects it.
+Spending: the pill opens `HintShopScreen` (`AppState.Shop`, Pushed
+archetype — back+title, no bottom nav). Three hint cards (50:50 / Буква /
+Пропуск, prices on `HintType.coinPrice` = 50/40/80) with **Купить** (deduct
+coins → `HintInventory` +1, persisted) and **Реклама** (rewarded ad → +1).
+AdMob: real `play-services-ads` SDK, `MobileAds.initialize` in
+`MyApplication`, manifest `APPLICATION_ID`, `RewardedAdEffect` loads + shows
+a real `RewardedAd`; reward → hint, dismiss/no-fill → graceful no-op (dim
+spinner scrim, no crash). The old simulated `RewardedAdDialog` was deleted.
+**Remaining (the documented swap):** all AdMob ids are Google's official
+**sample/test** ids (`ca-app-pub-3940256099942544~3347511713` /
+`…/5224354917`). Before release create a real AdMob app + rewarded unit and
+swap the manifest `APPLICATION_ID` and `TEST_REWARDED_UNIT` in
+`RewardedAdEffect.kt`. Also: no consent/UMP (GDPR) flow yet; coin balance is
+client-only (not synced to Firestore — fine, it's not competitive).
 
 ### 2. Notifications — STUB
 Bell badge is the constant `2` (`notifCount = 2` in `AppNav.kt`); the bell
@@ -135,6 +147,22 @@ Also: no room TTL/cleanup (stale `duels` docs accumulate — a future offline
 sweep script or a Blaze scheduled Function); rejoin after process death isn't
 restored (the code/role aren't persisted).
 
+### 10. Share v2 — IMPLEMENTED (store link, not a deep link)
+`utils/ShareText.kt`: pure `emojiGridFor(correct,total)` (🟩 per correct, one
+🟥 for the sudden-death miss, omitted on a perfect run, wrapped 5/row,
+spoiler-safe — never leaks titles) + `buildScoreShareText(...)` (header /
+grid / "Счёт:" / "Побей мой результат 👇" / store URL) + `shareText()`
+plain-text `ACTION_SEND`. `QuizAppViewModel` tracks `lastRunCorrect` /
+`lastRunTotal` in `finishRun()`; `ResultScreen`/`ShareResultDialog` show the
+grid and a 3-way chooser (Отмена / **Текстом** = Wordle block / **Картинкой**
+= the existing bitmap card). Verified: real system share sheet with the full
+challenge message.
+**Remaining:** the "challenge link" is the Play Store URL, not a deep link
+into a *pre-seeded* duel/track — true challenge links need Android App Links
+(a verified domain = hosting) or a Firebase Dynamic-Links-style resolver, both
+out of scope under the no-hosting constraint. `emojiGridFor` is pure and
+unit-test-ready (no test added yet — see cross-cutting "unit tests").
+
 ## Larger v2 scope (from the design README BUILD PLAN, reconciled)
 
 Already present in the codebase: Navigation-Compose, Room
@@ -156,9 +184,11 @@ Remaining bets, priority order:
 4. ~~**Async Duel** — 6-char share code + shared track + result sync~~ —
    DONE (replaced hot-seat; realtime listener instead of FCM — see Stub #9.
    Cross-app push remains out of scope on Spark).
-5. **Hint Shop + coin economy + AdMob** (items 1–2).
-6. **Share v2** — Wordle-style emoji grid (`🟩🟥` spoiler-safe) +
-   "побей мой результат" challenge link (`v2-extras.html` slide 08).
+5. ~~**Hint Shop + coin economy + AdMob**~~ — DONE (Stub #1; real AdMob on
+   test ids — documented swap. Notifications/FCM, item #2, still open).
+6. ~~**Share v2** — Wordle-style emoji grid + "побей мой результат"~~ —
+   DONE (Stub #10; challenge "link" is the store URL — true deep links need
+   hosting, out of scope).
 7. **Accessibility completion** — verify color-blind pairs + icon redundancy,
    reduce-motion coverage, larger-text/dyslexia preview row.
 8. **Content pipeline** — AnimeThemes.moe puller + review queue + 90-day
@@ -199,6 +229,13 @@ Until 1–3 are done the app degrades gracefully: the Топ tab shows the
   `repo/AnimeRepository.kt` (`getSeededQuestions`),
   `ui/composable/screen/DuelSetupScreen.kt` / `DuelHandoffScreen.kt` /
   `DuelResultScreen.kt`, `firestore.rules`
+- Shop / coins / ads: `ui/composable/screen/HintShopScreen.kt`,
+  `ui/composable/hints/RewardedAdEffect.kt`, `model/HintType.kt`
+  (`coinPrice`), `MyApplication.kt`, `AndroidManifest.xml`,
+  `QuizAppViewModel.kt` (`buyHintWithCoins`/coin award)
 - Router: `navigation/AppNav.kt`, `navigation/Routes.kt`, `model/AppState.kt`
 - State: `QuizAppViewModel.kt`, `data/prefs/UserPrefs.kt`
+- Share v2: `utils/ShareText.kt`, `ui/composable/share/ShareResultDialog.kt`,
+  `ui/composable/screen/ResultScreen.kt`, `QuizAppViewModel.kt`
+  (`lastRunCorrect`/`lastRunTotal`)
 - Tokens/icons: `ui/theme/Tokens.kt`, `ui/composable/manga/MangaIcons.kt`

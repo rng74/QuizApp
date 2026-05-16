@@ -22,6 +22,7 @@ import kz.yers.quiz.ui.composable.screen.DuelHandoffScreen
 import kz.yers.quiz.ui.composable.screen.DuelResultScreen
 import kz.yers.quiz.ui.composable.screen.DuelSetupScreen
 import kz.yers.quiz.ui.composable.screen.GameModeMenuScreen
+import kz.yers.quiz.ui.composable.screen.HintShopScreen
 import kz.yers.quiz.ui.composable.screen.LeaderboardScreen
 import kz.yers.quiz.ui.composable.screen.LoadingScreen
 import kz.yers.quiz.ui.composable.screen.OnboardingScreen
@@ -55,6 +56,7 @@ fun AppNavHost(
                         AppState.Profile -> Routes.PROFILE
                         AppState.Leaderboard -> Routes.LEADERBOARD
                         AppState.Settings -> Routes.SETTINGS
+                        AppState.Shop -> Routes.SHOP
                         AppState.DuelSetup -> Routes.DUEL_SETUP
                         AppState.DuelHandoff -> Routes.DUEL_HANDOFF
                         AppState.DuelResult -> Routes.DUEL_RESULT
@@ -97,7 +99,7 @@ fun AppNavHost(
             }
         },
         onOpenSettings = viewModel::openSettings,
-        onOpenShop = {},
+        onOpenShop = viewModel::openShop,
         onBack = viewModel::backToMenu,
     ) {
         NavHost(
@@ -175,6 +177,9 @@ fun AppNavHost(
                     modeDisplayName = viewModel.activeMode.value?.displayName,
                     isNewRecord = viewModel.isNewRecord.value,
                     isDaily = viewModel.resultWasDaily.value,
+                    coinsEarned = viewModel.lastRunCoins.intValue,
+                    correctCount = viewModel.lastRunCorrect.intValue,
+                    totalQuestions = viewModel.lastRunTotal.intValue,
                     needToAskReview = viewModel.tries == 3,
                     onReviewSuccess = {},
                     onRestart = viewModel::resetQuiz,
@@ -239,6 +244,17 @@ fun AppNavHost(
                             onReplayTutorial = viewModel::replayTutorial,
                             onResetHighScore = viewModel::resetHighScore,
                         ),
+                )
+            }
+            composable(Routes.SHOP) {
+                HintShopScreen(
+                    coins = viewModel.coins.intValue,
+                    inventory = viewModel.hintInventory.value,
+                    pendingAdType = viewModel.pendingRewardedAd.value,
+                    onBuyWithCoins = viewModel::buyHintWithCoins,
+                    onWatchAd = viewModel::requestRewardedAd,
+                    onAdReward = viewModel::completeRewardedAd,
+                    onAdDismiss = viewModel::cancelRewardedAd,
                 )
             }
         }

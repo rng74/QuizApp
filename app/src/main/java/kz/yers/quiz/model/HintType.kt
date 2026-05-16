@@ -1,9 +1,11 @@
 package kz.yers.quiz.model
 
-enum class HintType {
-    FIFTY_FIFTY,
-    REVEAL_LETTER,
-    SKIP,
+enum class HintType(
+    val coinPrice: Int,
+) {
+    FIFTY_FIFTY(50),
+    REVEAL_LETTER(40),
+    SKIP(80),
 }
 
 data class HintInventory(
