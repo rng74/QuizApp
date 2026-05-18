@@ -2,6 +2,8 @@ package kz.yers.quiz.ui.composable
 
 import android.util.Log
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,10 +16,12 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
+import kz.yers.quiz.model.LocalA11y
 
 @Composable
 fun BlurredImage(
@@ -26,7 +30,12 @@ fun BlurredImage(
     modifier: Modifier,
 ) {
     val context = LocalContext.current
-    val blurRadius by animateDpAsState(targetValue = if (isBlurred) 16.dp else 0.dp, label = "")
+    val reduceMotion = LocalA11y.current.reduceMotion
+    val blurRadius by animateDpAsState(
+        targetValue = if (isBlurred) 16.dp else 0.dp,
+        animationSpec = if (reduceMotion) snap() else spring<Dp>(),
+        label = "",
+    )
 
     Box(modifier = modifier) {
         SubcomposeAsyncImage(

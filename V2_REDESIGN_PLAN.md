@@ -163,6 +163,26 @@ into a *pre-seeded* duel/track — true challenge links need Android App Links
 out of scope under the no-hosting constraint. `emojiGridFor` is pure and
 unit-test-ready (no test added yet — see cross-cutting "unit tests").
 
+### 11. Accessibility — IMPLEMENTED
+The four a11y flags (`A11yState`, persisted in `UserPrefs`, provided via
+`LocalA11y` in `Theme.kt`) are all live:
+- **Color-blind pairs:** `successColor()`/`errorColor()` swap green→blue and
+  red→orange when `colorBlindSafe`; used by the quiz answer surfaces and the
+  Settings `PreviewRow`.
+- **Icon redundancy:** `OptionTile` carries a `✓`/`✕` glyph and the Settings
+  `FeedbackChip` echoes it — correctness never relies on hue alone.
+- **Reduce-motion:** already gated in `MangaButton`, `MangaSwitchRow`,
+  `QuizScreen` (konfetti, shake, score pulse); this pass extended it to the
+  `MainScaffold` chrome (top bars + bottom nav now snap instead of
+  expand/shrink on every navigation), `BlurredImage` (poster blur snaps), and
+  `OptionToggle` (segmented indicator snaps).
+- **Larger-text / dyslexia:** `Theme.kt` scales body text ×1.2 and swaps to
+  `DyslexiaFriendlyFamily`; the Settings ДОСТУПНОСТЬ section has a live
+  `PreviewRow` (correct/wrong chips) that re-renders under all three toggles.
+**Remaining (cross-cutting, not blocking):** no automated checks
+(contrast-ratio / TalkBack content-description audit); `contentDescription`
+coverage on decorative-vs-meaningful icons not formally swept.
+
 ## Larger v2 scope (from the design README BUILD PLAN, reconciled)
 
 Already present in the codebase: Navigation-Compose, Room
@@ -189,8 +209,8 @@ Remaining bets, priority order:
 6. ~~**Share v2** — Wordle-style emoji grid + "побей мой результат"~~ —
    DONE (Stub #10; challenge "link" is the store URL — true deep links need
    hosting, out of scope).
-7. **Accessibility completion** — verify color-blind pairs + icon redundancy,
-   reduce-motion coverage, larger-text/dyslexia preview row.
+7. ~~**Accessibility completion**~~ — DONE (Stub #11; reduce-motion coverage
+   extended to the scaffold chrome + blur + segmented toggle).
 8. **Content pipeline** — AnimeThemes.moe puller + review queue + 90-day
    no-repeat daily picker.
 

@@ -44,6 +44,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kz.yers.quiz.model.LocalA11y
 import kz.yers.quiz.navigation.Routes
 import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.theme.BangersFamily
@@ -105,11 +106,17 @@ fun MainScaffold(
     onBack: () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    // Reduce-motion: collapse the chrome show/hide tweens to instant so navigation
+    // doesn't slide the bars in/out on every screen change.
+    val reduceMotion = LocalA11y.current.reduceMotion
+    val enterDur = if (reduceMotion) 0 else 220
+    val exitDur = if (reduceMotion) 0 else 200
+    val fadeOutDur = if (reduceMotion) 0 else 160
     Column(modifier = Modifier.fillMaxSize().background(QuizColors.paper)) {
         AnimatedVisibility(
             visible = currentRoute.scaffoldOwnsTopBar(),
-            enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(220)),
-            exit = shrinkVertically(animationSpec = tween(200)) + fadeOut(tween(160)),
+            enter = expandVertically(animationSpec = tween(enterDur)) + fadeIn(tween(enterDur)),
+            exit = shrinkVertically(animationSpec = tween(exitDur)) + fadeOut(tween(fadeOutDur)),
         ) {
             RootTopBar(
                 isLeaderboard = currentRoute == Routes.LEADERBOARD,
@@ -121,8 +128,8 @@ fun MainScaffold(
         }
         AnimatedVisibility(
             visible = currentRoute.isPushed(),
-            enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(220)),
-            exit = shrinkVertically(animationSpec = tween(200)) + fadeOut(tween(160)),
+            enter = expandVertically(animationSpec = tween(enterDur)) + fadeIn(tween(enterDur)),
+            exit = shrinkVertically(animationSpec = tween(exitDur)) + fadeOut(tween(fadeOutDur)),
         ) {
             PushedTopBar(title = currentRoute.pushedTitle(), onBack = onBack)
         }
@@ -131,8 +138,8 @@ fun MainScaffold(
         }
         AnimatedVisibility(
             visible = currentRoute.isRootTab(),
-            enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(220)),
-            exit = shrinkVertically(animationSpec = tween(200)) + fadeOut(tween(160)),
+            enter = expandVertically(animationSpec = tween(enterDur)) + fadeIn(tween(enterDur)),
+            exit = shrinkVertically(animationSpec = tween(exitDur)) + fadeOut(tween(fadeOutDur)),
         ) {
             BottomNav(active = currentRoute.activeTab(), onTab = onTab)
         }

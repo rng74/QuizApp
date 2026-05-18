@@ -2,6 +2,8 @@ package kz.yers.quiz.ui.composable
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,8 +35,10 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kz.yers.quiz.R
+import kz.yers.quiz.model.LocalA11y
 
 @Composable
 fun OptionToggle(
@@ -47,7 +51,11 @@ fun OptionToggle(
     val optionCount = options.size
     val selectedIndex = options.indexOf(selectedOption)
     val indicatorWidth = remember { mutableStateOf(0.dp) }
-    val indicatorOffset by animateDpAsState(targetValue = indicatorWidth.value * selectedIndex)
+    val reduceMotion = LocalA11y.current.reduceMotion
+    val indicatorOffset by animateDpAsState(
+        targetValue = indicatorWidth.value * selectedIndex,
+        animationSpec = if (reduceMotion) snap() else spring<Dp>(),
+    )
     val density = LocalDensity.current
 
     Box(
