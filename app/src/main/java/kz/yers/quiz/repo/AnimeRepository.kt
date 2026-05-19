@@ -50,15 +50,24 @@ class AnimeRepository(
     }
 
     /**
-     * Deterministic single track for the Daily Challenge — same epochDay always picks the same
-     * track, distinct anime (by `titleRu`) for a stable pool. Stub for the v2 backend endpoint.
+     * Deterministic single track for the Daily Challenge.
+     *
+     * The track for a given [epochDay] is identical on every device/run (no server needed) — the
+     * Firestore daily-stats model assumes one shared track per day. The pool is heuristically
+     * curated (recognizable openings, [DAILY_MIN_RATING]+), then put through a fixed-seed
+     * permutation so the order is non-sequential to players. Indexing that permutation by
+     * [epochDay] makes each anime recur exactly every `pool.size` days, so as long as the
+     * curated pool has at least [DAILY_NO_REPEAT_WINDOW] entries no anime can repeat within a
+     * 90-day window. Falls back to the broad distinct pool if curation yields too few.
+     *
+     * Caveat: the epochDay→track map is stable only while `info.json` and the curation predicate
+     * are unchanged. A future content-pipeline regen would shift the schedule; clients on
+     * different app versions could then see different daily tracks for the same day (already true
+     * before this change, and acceptable).
      */
     suspend fun getDailyQuestion(epochDay: Long): QuizQuestion? {
         if (animeList.isEmpty()) loadAnimeData()
-        val pool = animeList.filter { it.titleRu.isNotBlank() }.distinctBy { it.titleRu }
-        if (pool.isEmpty()) return null
-        val index = (epochDay.mod(pool.size.toLong())).toInt()
-        val correct = pool[index]
+        val correct = pickDailyTitle(animeList, epochDay) ?: return null
         val options = generateOptions(correct)
         return QuizQuestion(correctAnswer = correct, options = options)
     }
@@ -185,4 +194,42 @@ class AnimeRepository(
     fun clearHighScore() {
         sharedPreferences.edit { remove(HIGH_SCORE) }
     }
+}
+
+private const val DAILY_MIN_RATING = 7.0f
+private const val DAILY_SHUFFLE_SEED = 0x5DA17_4D41L
+private const val DAILY_NO_REPEAT_WINDOW = 90
+
+/**
+ * Pure daily picker (no I/O, no un-seeded randomness) so the 90-day no-repeat invariant is
+ * unit-testable. Same [list] + [epochDay] always yields the same [AnimeInfo] on every device.
+ *
+ * The pool is heuristically curated (recognizable openings, [DAILY_MIN_RATING]+), then put
+ * through a fixed-seed permutation so the order is non-sequential. Indexing that permutation by
+ * [epochDay] makes each anime recur exactly every `pool.size` days, so a curated pool of at
+ * least [DAILY_NO_REPEAT_WINDOW] entries can never repeat an anime within a 90-day window.
+ * Falls back to the broad distinct pool if curation yields too few.
+ */
+internal fun pickDailyTitle(
+    list: List<AnimeInfo>,
+    epochDay: Long,
+): AnimeInfo? {
+    val curated =
+        list
+            .filter {
+                it.titleRu.isNotBlank() &&
+                    it.rating > DAILY_MIN_RATING &&
+                    it.albumName.endsWith("OP")
+            }
+            .distinctBy { it.titleRu }
+            .sortedBy { it.titleRu }
+    val pool =
+        if (curated.size >= DAILY_NO_REPEAT_WINDOW) {
+            curated.shuffled(Random(DAILY_SHUFFLE_SEED))
+        } else {
+            list.filter { it.titleRu.isNotBlank() }.distinctBy { it.titleRu }
+        }
+    if (pool.isEmpty()) return null
+    val index = (epochDay.mod(pool.size.toLong())).toInt()
+    return pool[index]
 }

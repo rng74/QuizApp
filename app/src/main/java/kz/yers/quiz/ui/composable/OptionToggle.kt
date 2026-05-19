@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -39,6 +38,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kz.yers.quiz.R
 import kz.yers.quiz.model.LocalA11y
+import kz.yers.quiz.ui.composable.manga.mangaClickable
+import kz.yers.quiz.ui.composable.manga.mangaPressNudge
+import kz.yers.quiz.ui.composable.manga.rememberMangaPressState
 
 @Composable
 fun OptionToggle(
@@ -91,6 +93,7 @@ fun OptionToggle(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             options.forEach { option ->
+                val press = rememberMangaPressState()
                 val isSelected = option == selectedOption
                 val contentColor =
                     if (isSelected) {
@@ -106,7 +109,8 @@ fun OptionToggle(
                         Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clickable { onOptionSelected(option) },
+                            .mangaClickable(press) { onOptionSelected(option) }
+                            .mangaPressNudge(press),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

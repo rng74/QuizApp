@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,11 +41,13 @@ fun MangaSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val press = rememberMangaPressState()
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clickable { onCheckedChange(!checked) }
+                .mangaClickable(press) { onCheckedChange(!checked) }
+                .mangaPressNudge(press)
                 .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -89,6 +90,7 @@ fun MangaSwitch(
         animationSpec = spring(stiffness = if (a11y.reduceMotion) Spring.StiffnessHigh * 4 else Spring.StiffnessMedium),
         label = "switch-knob",
     )
+    val press = rememberMangaPressState()
     Box(
         modifier =
             modifier
@@ -96,7 +98,7 @@ fun MangaSwitch(
                 .clip(trackShape)
                 .background(if (checked) tint else Color(0xFFDDDDDD))
                 .border(QuizStrokes.regular, QuizColors.ink, trackShape)
-                .clickable { onCheckedChange(!checked) },
+                .mangaClickable(press) { onCheckedChange(!checked) },
     ) {
         Box(
             modifier =

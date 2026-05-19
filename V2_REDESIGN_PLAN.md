@@ -211,8 +211,17 @@ Remaining bets, priority order:
    hosting, out of scope).
 7. ~~**Accessibility completion**~~ — DONE (Stub #11; reduce-motion coverage
    extended to the scaffold chrome + blur + segmented toggle).
-8. **Content pipeline** — AnimeThemes.moe puller + review queue + 90-day
-   no-repeat daily picker.
+8. **Content pipeline** — PARTIAL. The in-app **90-day no-repeat daily
+   picker** is shipped: `pickDailyTitle()` in `repo/AnimeRepository.kt` is a
+   pure function that curates a quality pool (non-blank `titleRu`, `rating >
+   7.0`, OP) from the existing `info.json`, fixed-seed-shuffles it, and
+   indexes by `epochDay` so each anime recurs exactly every `pool.size`
+   (≫90) days — deterministic and identical on every device (required by the
+   Firestore daily-stats model). Falls back to the broad distinct pool if
+   curation yields < 90. Invariants covered by `app/src/test/.../
+   DailyPickerTest.kt`. **Remaining:** the AnimeThemes.moe puller + review
+   queue stay out of scope — the data source is unchanged (anison.fm, RU
+   titles), curation is the in-app heuristic, not an offline-curated feed.
 
 Cross-cutting: RU-only strings, telemetry events, `Result<T>` network error
 states with manga retry panel, offline mode for solo modes, unit tests

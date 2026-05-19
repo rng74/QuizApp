@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,9 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -47,6 +44,10 @@ import androidx.compose.ui.unit.sp
 import kz.yers.quiz.model.LocalA11y
 import kz.yers.quiz.navigation.Routes
 import kz.yers.quiz.ui.composable.manga.MangaIcons
+import kz.yers.quiz.ui.composable.manga.mangaClickable
+import kz.yers.quiz.ui.composable.manga.mangaPressNudge
+import kz.yers.quiz.ui.composable.manga.mangaPressShadow
+import kz.yers.quiz.ui.composable.manga.rememberMangaPressState
 import kz.yers.quiz.ui.theme.BangersFamily
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizRadii
@@ -265,24 +266,22 @@ private fun CoinsPill(
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(QuizRadii.pill)
+    val press = rememberMangaPressState()
     Box(
         modifier =
             Modifier
                 .padding(end = QuizStrokes.regular, bottom = QuizStrokes.regular)
-                .drawBehind {
-                    val o = QuizStrokes.regular.toPx()
-                    drawRoundRect(
-                        color = QuizColors.ink,
-                        topLeft = Offset(o, o),
-                        size = Size(size.width, size.height),
-                        cornerRadius = CornerRadius(size.height, size.height),
-                    )
-                }
+                .mangaPressShadow(
+                    state = press,
+                    restingShadow = QuizStrokes.regular,
+                    cornerRadius = QuizRadii.pill,
+                    pressedShadow = 0.dp,
+                )
                 .height(36.dp)
                 .clip(shape)
                 .background(Brush.linearGradient(listOf(QuizColors.coinLight, QuizColors.coinDeep)))
                 .border(QuizStrokes.regular, QuizColors.ink, shape)
-                .clickable(onClick = onClick)
+                .mangaClickable(press, onClick = onClick)
                 .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -310,26 +309,23 @@ private fun IconBtn(
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(QuizRadii.button)
+    val press = rememberMangaPressState()
     Box(modifier = Modifier.size(46.dp), contentAlignment = Alignment.Center) {
         Box(
             modifier =
                 Modifier
                     .padding(end = QuizStrokes.regular, bottom = QuizStrokes.regular)
-                    .drawBehind {
-                        val o = QuizStrokes.regular.toPx()
-                        val r = QuizRadii.button.toPx()
-                        drawRoundRect(
-                            color = QuizColors.ink,
-                            topLeft = Offset(o, o),
-                            size = Size(size.width, size.height),
-                            cornerRadius = CornerRadius(r, r),
-                        )
-                    }
+                    .mangaPressShadow(
+                        state = press,
+                        restingShadow = QuizStrokes.regular,
+                        cornerRadius = QuizRadii.button,
+                        pressedShadow = 0.dp,
+                    )
                     .size(40.dp)
                     .clip(shape)
                     .background(Color.White)
                     .border(QuizStrokes.regular, QuizColors.ink, shape)
-                    .clickable(onClick = onClick),
+                    .mangaClickable(press, onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -406,10 +402,12 @@ private fun NavItem(
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
+    val press = rememberMangaPressState()
     Column(
         modifier =
             modifier
-                .clickable(onClick = onClick)
+                .mangaClickable(press, onClick = onClick)
+                .mangaPressNudge(press)
                 .drawBehind {
                     if (!selected) return@drawBehind
                     val insetX = 6.dp.toPx()
