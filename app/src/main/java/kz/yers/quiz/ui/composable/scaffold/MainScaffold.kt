@@ -67,12 +67,14 @@ private fun String?.scaffoldOwnsTopBar(): Boolean =
     this == Routes.MENU || this == Routes.LEADERBOARD
 
 /** Pushed screens get the scaffold's back+title bar (no bottom nav). */
-private fun String?.isPushed(): Boolean = this == Routes.SETTINGS || this == Routes.SHOP
+private fun String?.isPushed(): Boolean =
+    this == Routes.SETTINGS || this == Routes.SHOP || this == Routes.NOTIFICATIONS
 
 private fun String?.pushedTitle(): String =
     when (this) {
         Routes.SETTINGS -> "НАСТРОЙКИ"
         Routes.SHOP -> "МАГАЗИН ПОДСКАЗОК"
+        Routes.NOTIFICATIONS -> "УВЕДОМЛЕНИЯ"
         else -> ""
     }
 
@@ -104,6 +106,7 @@ fun MainScaffold(
     onTab: (tabIndex: Int) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenShop: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onBack: () -> Unit,
     content: @Composable () -> Unit,
 ) {
@@ -125,6 +128,7 @@ fun MainScaffold(
                 notifCount = notifCount,
                 onOpenSettings = onOpenSettings,
                 onOpenShop = onOpenShop,
+                onOpenNotifications = onOpenNotifications,
             )
         }
         AnimatedVisibility(
@@ -154,6 +158,7 @@ private fun RootTopBar(
     notifCount: Int,
     onOpenSettings: () -> Unit,
     onOpenShop: () -> Unit,
+    onOpenNotifications: () -> Unit,
 ) {
     Row(
         modifier =
@@ -206,7 +211,7 @@ private fun RootTopBar(
                 ),
         )
         if (!isLeaderboard) {
-            IconBtn(icon = MangaIcons.Bell, badge = notifCount, onClick = {})
+            IconBtn(icon = MangaIcons.Bell, badge = notifCount, onClick = onOpenNotifications)
         }
         IconBtn(icon = MangaIcons.Settings, badge = 0, onClick = onOpenSettings)
     }

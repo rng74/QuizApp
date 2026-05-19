@@ -2,6 +2,8 @@ package kz.yers.quiz
 
 import android.app.Application
 import com.google.android.gms.ads.MobileAds
+import kz.yers.quiz.data.notifications.DailyReminderWorker
+import kz.yers.quiz.data.notifications.NotificationChannels
 import kz.yers.quiz.koin.appModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -16,5 +18,8 @@ class MyApplication : Application() {
         }
 
         MobileAds.initialize(this)
+
+        NotificationChannels.ensure(this)
+        DailyReminderWorker.schedule(this)
     }
 }

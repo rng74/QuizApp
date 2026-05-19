@@ -25,6 +25,7 @@ import kz.yers.quiz.ui.composable.screen.GameModeMenuScreen
 import kz.yers.quiz.ui.composable.screen.HintShopScreen
 import kz.yers.quiz.ui.composable.screen.LeaderboardScreen
 import kz.yers.quiz.ui.composable.screen.LoadingScreen
+import kz.yers.quiz.ui.composable.screen.NotificationInboxScreen
 import kz.yers.quiz.ui.composable.screen.OnboardingScreen
 import kz.yers.quiz.ui.composable.screen.ProfileScreen
 import kz.yers.quiz.ui.composable.screen.QuizScreen
@@ -56,6 +57,7 @@ fun AppNavHost(
                         AppState.Profile -> Routes.PROFILE
                         AppState.Leaderboard -> Routes.LEADERBOARD
                         AppState.Settings -> Routes.SETTINGS
+                        AppState.Notifications -> Routes.NOTIFICATIONS
                         AppState.Shop -> Routes.SHOP
                         AppState.DuelSetup -> Routes.DUEL_SETUP
                         AppState.DuelHandoff -> Routes.DUEL_HANDOFF
@@ -88,7 +90,7 @@ fun AppNavHost(
     MainScaffold(
         currentRoute = currentRoute?.destination?.route,
         coins = viewModel.coins.intValue,
-        notifCount = 2,
+        notifCount = viewModel.unreadCount.intValue,
         onTab = { index ->
             when (index) {
                 0 -> viewModel.backToMenu()
@@ -100,6 +102,7 @@ fun AppNavHost(
         },
         onOpenSettings = viewModel::openSettings,
         onOpenShop = viewModel::openShop,
+        onOpenNotifications = viewModel::openNotifications,
         onBack = viewModel::backToMenu,
     ) {
         NavHost(
@@ -245,6 +248,9 @@ fun AppNavHost(
                             onResetHighScore = viewModel::resetHighScore,
                         ),
                 )
+            }
+            composable(Routes.NOTIFICATIONS) {
+                NotificationInboxScreen(notifications = viewModel.notificationsList.value)
             }
             composable(Routes.SHOP) {
                 HintShopScreen(

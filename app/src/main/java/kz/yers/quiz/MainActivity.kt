@@ -1,9 +1,14 @@
 package kz.yers.quiz
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -23,6 +29,9 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 class MainActivity : ComponentActivity() {
     private val viewModel: QuizAppViewModel by viewModel()
 
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SoundManager.init(this)
@@ -33,14 +42,46 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+        maybeRequestNotificationPermission()
+        routeFromIntent(intent)
         setContent {
             QuizApp(viewModel)
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        routeFromIntent(intent)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         SoundManager.release()
+    }
+
+    private fun maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /** Honors a notification tap: jump to the inbox or the daily challenge. */
+    private fun routeFromIntent(intent: Intent?) {
+        when (intent?.getStringExtra(EXTRA_DESTINATION)) {
+            DEST_NOTIFICATIONS -> viewModel.openNotifications()
+            DEST_DAILY -> viewModel.openDaily()
+        }
+    }
+
+    companion object {
+        const val EXTRA_DESTINATION = "destination"
+        const val DEST_NOTIFICATIONS = "notifications"
+        const val DEST_DAILY = "daily"
     }
 }
 

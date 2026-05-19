@@ -55,11 +55,27 @@ swap the manifest `APPLICATION_ID` and `TEST_REWARDED_UNIT` in
 `RewardedAdEffect.kt`. Also: no consent/UMP (GDPR) flow yet; coin balance is
 client-only (not synced to Firestore — fine, it's not competitive).
 
-### 2. Notifications — STUB
-Bell badge is the constant `2` (`notifCount = 2` in `AppNav.kt`); the bell
-button is a no-op.
-**Real:** FCM channel for duel results / daily reminders; an inbox screen
-(Pushed archetype); badge = unread count from a `Notification` table.
+### 2. Notifications — IMPLEMENTED (local; no cross-device push)
+Room `notification` table (`NotificationEntity`/`NotificationDao`, DB v3) is the
+single source of truth. `NotificationRepository.notify()` writes the inbox row
+*and* (best-effort, permission-gated) mirrors it to the system tray via
+`NotificationManagerCompat`; `observe()`/`unreadCount()` are DAO `Flow`s the
+ViewModel collects. The bell badge is the real unread count (`viewModel
+.unreadCount` in `AppNav.kt`); tapping the bell opens `NotificationInboxScreen`
+(`AppState.Notifications`/`Routes.NOTIFICATIONS`, Pushed archetype) which
+marks-all-read on open. Event rows are emitted from existing hooks: new record
++ streak milestone + daily-done in `finishRun()`, duel result from the Firestore
+listener (`maybeNotifyDuelResult`, once per duel). Scheduled rows: a
+WorkManager `DailyReminderWorker` (~daily at 19:00 local, `enqueueUniquePeriodic
+Work`) posts a daily-challenge reminder, escalated to a streak-at-risk warning
+when an active streak would break. Channels (`NotificationChannels`: events vs.
+reminders) created in `MyApplication`; `POST_NOTIFICATIONS` requested at runtime
+in `MainActivity` (API 33+); notification taps deep-link via an intent extra
+(`MainActivity.routeFromIntent` → inbox or daily, activity is `singleTop`).
+**Remaining (the documented gap):** cross-device push (opponent finished while
+the app is closed) still needs Blaze + a Function — same boundary as Stub #9;
+the in-app Firestore listener covers the both-present case and the inbox records
+it regardless. No quiet-hours / per-type mute settings yet.
 
 ### 3. Leaderboard — IMPLEMENTED (all-time)
 Firebase-backed: anonymous Auth + Firestore `leaderboard/{uid}` (best solo
@@ -205,7 +221,9 @@ Remaining bets, priority order:
    DONE (replaced hot-seat; realtime listener instead of FCM — see Stub #9.
    Cross-app push remains out of scope on Spark).
 5. ~~**Hint Shop + coin economy + AdMob**~~ — DONE (Stub #1; real AdMob on
-   test ids — documented swap. Notifications/FCM, item #2, still open).
+   test ids — documented swap).
+9. ~~**Notifications** — inbox + live badge + local reminders~~ — DONE
+   (Stub #2; cross-device push remains out of scope on Spark, same as Stub #9).
 6. ~~**Share v2** — Wordle-style emoji grid + "побей мой результат"~~ —
    DONE (Stub #10; challenge "link" is the store URL — true deep links need
    hosting, out of scope).

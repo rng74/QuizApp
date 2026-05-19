@@ -16,7 +16,10 @@ import kotlinx.coroutines.withContext
 import kz.yers.quiz.data.local.dao.DailyAttemptDao
 import kz.yers.quiz.data.local.dao.RunHistoryDao
 import kz.yers.quiz.data.local.entity.DailyAttemptEntity
+import kz.yers.quiz.data.local.entity.NotificationEntity
 import kz.yers.quiz.data.local.entity.RunHistoryEntity
+import kz.yers.quiz.data.notifications.NotificationRepository
+import kz.yers.quiz.data.notifications.NotificationType
 import kz.yers.quiz.data.prefs.UserPrefs
 import kz.yers.quiz.data.remote.DailyStatsRepository
 import kz.yers.quiz.data.remote.DuelCreateResult
@@ -54,6 +57,7 @@ class QuizAppViewModel(
     private val leaderboard: LeaderboardRepository,
     private val dailyStats: DailyStatsRepository,
     private val duel: DuelRepository,
+    private val notifications: NotificationRepository,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
@@ -114,8 +118,18 @@ class QuizAppViewModel(
     val lastRunTotal = mutableIntStateOf(0)
     private var skipRequested = false
 
+    val notificationsList = mutableStateOf<List<NotificationEntity>>(emptyList())
+    val unreadCount = mutableIntStateOf(0)
+    private var duelResultNotified = false
+
     init {
         _highScore.intValue = repository.getHighScore()
+        viewModelScope.launch {
+            notifications.observe().collect { notificationsList.value = it }
+        }
+        viewModelScope.launch {
+            notifications.unreadCount().collect { unreadCount.intValue = it }
+        }
         viewModelScope.launch {
             _isPosterEnabled.value = userPrefs.posterEnabled.first()
             soundEnabled.value = userPrefs.soundEnabled.first()
@@ -256,6 +270,11 @@ class QuizAppViewModel(
         appState.value = AppState.Shop
     }
 
+    fun openNotifications() {
+        appState.value = AppState.Notifications
+        viewModelScope.launch { notifications.markAllRead() }
+    }
+
     /** Spend coins on a hint. No-op if the player can't afford it. */
     fun buyHintWithCoins(type: HintType) {
         val price = type.coinPrice
@@ -323,6 +342,7 @@ class QuizAppViewModel(
 
     fun openDuelSetup() {
         isDuelRun = false
+        duelResultNotified = false
         duelListenerJob?.cancel()
         duelListenerJob = null
         duelState.value = DuelState()
@@ -423,8 +443,29 @@ class QuizAppViewModel(
                             opponentScore = if (isHost) snap.guestScore else snap.hostScore,
                             myScore = (if (isHost) snap.hostScore else snap.guestScore) ?: s.myScore,
                         )
+                    maybeNotifyDuelResult()
                 }
             }
+    }
+
+    /** Once both duel scores are in, drop a single inbox + tray row with the outcome. */
+    private fun maybeNotifyDuelResult() {
+        val s = duelState.value
+        if (duelResultNotified || !s.bothFinished) return
+        duelResultNotified = true
+        val title =
+            when (s.winnerIndex) {
+                0 -> "Победа в дуэли! 🥇"
+                1 -> "Поражение в дуэли"
+                else -> "Ничья в дуэли"
+            }
+        viewModelScope.launch {
+            notifications.notify(
+                type = NotificationType.DUEL_RESULT,
+                title = title,
+                body = "Ты: ${s.myScore} · ${s.opponentName ?: "Соперник"}: ${s.opponentScore}",
+            )
+        }
     }
 
     /** From the lobby: load the shared seed-deterministic track and start this device's round. */
@@ -770,6 +811,12 @@ class QuizAppViewModel(
                     coins.intValue = newTotal
                 }
                 lastRunCoins.intValue = earned
+                emitRunNotifications(
+                    isNewRecord = isNewRecord.value,
+                    finalScore = finalScore,
+                    isDaily = isDaily,
+                    streakBonusEarned = streakBonus > 0,
+                )
                 if (!isDaily) {
                     leaderboard.submitScore(
                         name = userPrefs.userName.first(),
@@ -804,6 +851,38 @@ class QuizAppViewModel(
             }
         userPrefs.setStreak(next, today)
         return if (advanced && next > 0 && next % STREAK_BONUS_EVERY == 0) STREAK_BONUS_COINS else 0
+    }
+
+    /** Inbox + tray rows for a finished solo/daily run (record, streak milestone, daily done). */
+    private suspend fun emitRunNotifications(
+        isNewRecord: Boolean,
+        finalScore: Int,
+        isDaily: Boolean,
+        streakBonusEarned: Boolean,
+    ) {
+        if (isNewRecord) {
+            notifications.notify(
+                type = NotificationType.NEW_RECORD,
+                title = "Новый рекорд! 🏆",
+                body = "Ты набрал $finalScore очков — это твой лучший результат.",
+            )
+        }
+        if (streakBonusEarned) {
+            val streak = userPrefs.currentStreakDays.first()
+            notifications.notify(
+                type = NotificationType.STREAK_MILESTONE,
+                title = "Серия $streak дней! 🔥",
+                body = "Бонус +$STREAK_BONUS_COINS монет за серию. Так держать!",
+            )
+        }
+        if (isDaily) {
+            notifications.notify(
+                type = NotificationType.DAILY_DONE,
+                title = "Дневной вызов пройден ✅",
+                body = "Ты заработал $finalScore очков сегодня. Возвращайся завтра!",
+                systemTray = false,
+            )
+        }
     }
 
     /** Quit mid-game from the immersive quiz: forfeit — no run recorded, no high score written. */
