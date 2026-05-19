@@ -14,8 +14,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kz.yers.quiz.data.local.dao.DailyAttemptDao
+import kz.yers.quiz.data.local.dao.FriendDao
 import kz.yers.quiz.data.local.dao.RunHistoryDao
 import kz.yers.quiz.data.local.entity.DailyAttemptEntity
+import kz.yers.quiz.data.local.entity.FriendEntity
 import kz.yers.quiz.data.local.entity.NotificationEntity
 import kz.yers.quiz.data.local.entity.RunHistoryEntity
 import kz.yers.quiz.data.notifications.NotificationRepository
@@ -25,15 +27,19 @@ import kz.yers.quiz.data.remote.DailyStatsRepository
 import kz.yers.quiz.data.remote.DuelCreateResult
 import kz.yers.quiz.data.remote.DuelJoinResult
 import kz.yers.quiz.data.remote.DuelRepository
+import kz.yers.quiz.data.remote.FriendLookup
+import kz.yers.quiz.data.remote.FriendsRepository
 import kz.yers.quiz.data.remote.LeaderboardRepository
 import kz.yers.quiz.model.A11yState
 import kz.yers.quiz.model.Achievements
+import kz.yers.quiz.model.AddFriendResult
 import kz.yers.quiz.model.AppState
 import kz.yers.quiz.model.DailyAttemptSummary
 import kz.yers.quiz.model.DailyState
 import kz.yers.quiz.model.DuelPhase
 import kz.yers.quiz.model.DuelRole
 import kz.yers.quiz.model.DuelState
+import kz.yers.quiz.model.FriendCard
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.HintInventory
 import kz.yers.quiz.model.HintType
@@ -58,6 +64,8 @@ class QuizAppViewModel(
     private val dailyStats: DailyStatsRepository,
     private val duel: DuelRepository,
     private val notifications: NotificationRepository,
+    private val friendDao: FriendDao,
+    private val friends: FriendsRepository,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
@@ -122,6 +130,12 @@ class QuizAppViewModel(
     val unreadCount = mutableIntStateOf(0)
     private var duelResultNotified = false
 
+    val friendsList = mutableStateOf<List<FriendCard>>(emptyList())
+    val myFriendCode = mutableStateOf<String?>(null)
+    val friendsLoading = mutableStateOf(false)
+    val addFriendStatus = mutableStateOf<AddFriendResult?>(null)
+    private val friendScores = mutableMapOf<String, Int>()
+
     init {
         _highScore.intValue = repository.getHighScore()
         viewModelScope.launch {
@@ -129,6 +143,11 @@ class QuizAppViewModel(
         }
         viewModelScope.launch {
             notifications.unreadCount().collect { unreadCount.intValue = it }
+        }
+        viewModelScope.launch {
+            friendDao.observeAll().collect { list ->
+                friendsList.value = list.map { FriendCard(it.uid, it.name, friendScores[it.uid]) }
+            }
         }
         viewModelScope.launch {
             _isPosterEnabled.value = userPrefs.posterEnabled.first()
@@ -273,6 +292,64 @@ class QuizAppViewModel(
     fun openNotifications() {
         appState.value = AppState.Notifications
         viewModelScope.launch { notifications.markAllRead() }
+    }
+
+    fun openFriends() {
+        appState.value = AppState.Friends
+        addFriendStatus.value = null
+        refreshFriends()
+    }
+
+    /** Pull this device's friend code + each friend's current best score (best-effort). */
+    fun refreshFriends() {
+        if (friendsLoading.value) return
+        friendsLoading.value = true
+        viewModelScope.launch {
+            myFriendCode.value = friends.myUid()
+            val entities = withContext(Dispatchers.IO) { friendDao.all() }
+            entities.forEach { e ->
+                friends.fetch(e.uid)?.let { friendScores[e.uid] = it.bestScore }
+            }
+            friendsList.value =
+                entities.map { FriendCard(it.uid, it.name, friendScores[it.uid]) }
+            friendsLoading.value = false
+        }
+    }
+
+    /** Add a friend by their code (= their anon uid). Surfaces the outcome in [addFriendStatus]. */
+    fun addFriend(rawCode: String) {
+        val code = rawCode.trim()
+        if (code.isEmpty()) return
+        viewModelScope.launch {
+            val mine = friends.myUid()
+            if (code == mine) {
+                addFriendStatus.value = AddFriendResult.Self
+                return@launch
+            }
+            when (val res = friends.lookup(code)) {
+                is FriendLookup.Found -> {
+                    friendScores[res.profile.uid] = res.profile.bestScore
+                    withContext(Dispatchers.IO) {
+                        friendDao.upsert(
+                            FriendEntity(uid = res.profile.uid, name = res.profile.name),
+                        )
+                    }
+                    addFriendStatus.value = AddFriendResult.Ok
+                }
+
+                FriendLookup.NotFound -> addFriendStatus.value = AddFriendResult.NotFound
+                FriendLookup.Offline -> addFriendStatus.value = AddFriendResult.Offline
+            }
+        }
+    }
+
+    fun removeFriend(uid: String) {
+        friendScores.remove(uid)
+        viewModelScope.launch { withContext(Dispatchers.IO) { friendDao.delete(uid) } }
+    }
+
+    fun clearAddFriendStatus() {
+        addFriendStatus.value = null
     }
 
     /** Spend coins on a hint. No-op if the player can't afford it. */

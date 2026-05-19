@@ -21,6 +21,7 @@ import kz.yers.quiz.ui.composable.screen.DailyChallengeScreen
 import kz.yers.quiz.ui.composable.screen.DuelHandoffScreen
 import kz.yers.quiz.ui.composable.screen.DuelResultScreen
 import kz.yers.quiz.ui.composable.screen.DuelSetupScreen
+import kz.yers.quiz.ui.composable.screen.FriendsScreen
 import kz.yers.quiz.ui.composable.screen.GameModeMenuScreen
 import kz.yers.quiz.ui.composable.screen.HintShopScreen
 import kz.yers.quiz.ui.composable.screen.LeaderboardScreen
@@ -58,6 +59,7 @@ fun AppNavHost(
                         AppState.Leaderboard -> Routes.LEADERBOARD
                         AppState.Settings -> Routes.SETTINGS
                         AppState.Notifications -> Routes.NOTIFICATIONS
+                        AppState.Friends -> Routes.FRIENDS
                         AppState.Shop -> Routes.SHOP
                         AppState.DuelSetup -> Routes.DUEL_SETUP
                         AppState.DuelHandoff -> Routes.DUEL_HANDOFF
@@ -201,7 +203,19 @@ fun AppNavHost(
             }
             composable(Routes.PROFILE) {
                 val state by viewModel.profileState
-                ProfileScreen(state = state)
+                ProfileScreen(state = state, onOpenFriends = viewModel::openFriends)
+            }
+            composable(Routes.FRIENDS) {
+                FriendsScreen(
+                    myCode = viewModel.myFriendCode.value,
+                    friends = viewModel.friendsList.value,
+                    loading = viewModel.friendsLoading.value,
+                    myBestScore = viewModel.highScore.value,
+                    addStatus = viewModel.addFriendStatus.value,
+                    onAddFriend = viewModel::addFriend,
+                    onRemoveFriend = viewModel::removeFriend,
+                    onClearStatus = viewModel::clearAddFriendStatus,
+                )
             }
             composable(Routes.DUEL_SETUP) {
                 val state by viewModel.duelState

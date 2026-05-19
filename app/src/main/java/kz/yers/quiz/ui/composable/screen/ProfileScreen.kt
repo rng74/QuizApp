@@ -44,6 +44,8 @@ import kz.yers.quiz.model.AchievementVariant
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.ProfileState
 import kz.yers.quiz.model.RecentGame
+import kz.yers.quiz.ui.composable.manga.MangaButton
+import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.SpeedLines
 import kz.yers.quiz.ui.composable.manga.icon
@@ -67,7 +69,10 @@ private val BadgeGlyphStyle =
     )
 
 @Composable
-fun ProfileScreen(state: ProfileState) {
+fun ProfileScreen(
+    state: ProfileState,
+    onOpenFriends: () -> Unit,
+) {
     LazyColumn(
         modifier =
             Modifier
@@ -81,6 +86,17 @@ fun ProfileScreen(state: ProfileState) {
             Spacer(Modifier.height(0.dp))
             // Intentional overlap into the header. Keep in sync with ProfileHeader bottom padding (60.dp) if either changes.
             ProfileStatsRow(state = state, modifier = Modifier.padding(horizontal = 16.dp).offset(y = (-44).dp))
+        }
+        item {
+            Box(modifier = Modifier.padding(horizontal = 16.dp).offset(y = (-28).dp)) {
+                MangaButton(
+                    label = "ДРУЗЬЯ",
+                    variant = MangaButtonVariant.Tint,
+                    onClick = onOpenFriends,
+                    modifier = Modifier.fillMaxWidth(),
+                    minHeight = 48.dp,
+                )
+            }
         }
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {

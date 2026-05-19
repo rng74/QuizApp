@@ -11,6 +11,7 @@ object Routes {
     const val LEADERBOARD = "leaderboard"
     const val SETTINGS = "settings"
     const val NOTIFICATIONS = "notifications"
+    const val FRIENDS = "friends"
     const val SHOP = "shop"
     const val DUEL_SETUP = "duel_setup"
     const val DUEL_HANDOFF = "duel_handoff"

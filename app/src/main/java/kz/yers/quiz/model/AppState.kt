@@ -28,6 +28,8 @@ sealed class AppState(
 
     data object Notifications : AppState("notifications")
 
+    data object Friends : AppState("friends")
+
     data object Shop : AppState("shop")
 
     data object DuelSetup : AppState("duel_setup")

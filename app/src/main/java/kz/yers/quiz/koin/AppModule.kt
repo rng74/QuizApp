@@ -9,6 +9,7 @@ import kz.yers.quiz.data.notifications.NotificationRepository
 import kz.yers.quiz.data.prefs.UserPrefs
 import kz.yers.quiz.data.remote.DailyStatsRepository
 import kz.yers.quiz.data.remote.DuelRepository
+import kz.yers.quiz.data.remote.FriendsRepository
 import kz.yers.quiz.data.remote.LeaderboardRepository
 import kz.yers.quiz.repo.AnimeRepository
 import org.koin.android.ext.koin.androidContext
@@ -25,11 +26,17 @@ val appModule =
         single { get<AppDatabase>().runHistoryDao() }
         single { get<AppDatabase>().dailyAttemptDao() }
         single { get<AppDatabase>().notificationDao() }
+        single { get<AppDatabase>().friendDao() }
         single { NotificationRepository(androidContext(), get()) }
+        single { FriendsRepository() }
         single { UserPrefs(androidContext()) }
         single { AnimeRepository(androidContext(), get(), get()) }
         single { LeaderboardRepository() }
         single { DailyStatsRepository() }
         single { DuelRepository() }
-        viewModel { QuizAppViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+        viewModel {
+            QuizAppViewModel(
+                get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
+            )
+        }
     }

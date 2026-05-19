@@ -199,6 +199,30 @@ The four a11y flags (`A11yState`, persisted in `UserPrefs`, provided via
 (contrast-ratio / TalkBack content-description audit); `contentDescription`
 coverage on decorative-vs-meaningful icons not formally swept.
 
+### 12. Friends — IMPLEMENTED (local list; reuses the leaderboard doc)
+Friends ride the existing Spark model with **no `firestore.rules` change and no
+new collection**: a "friend code" is the player's anonymous Firebase uid, and a
+friend's public profile is read from their already-rules-guarded
+`leaderboard/{uid}` doc (name + best score). The friend list itself is local
+(Room `friend` table, DB v4) — the app only ever *reads* others' docs, never
+writes them, so the Spark "client-asserted, rules-bounded" contract is
+untouched. `FriendsRepository`: `myUid()` (anon sign-in), `lookup(code)`
+(Found/NotFound/Offline), `fetch(uid)` (best-effort live score). ViewModel:
+`friendsList`/`myFriendCode`/`friendsLoading`/`addFriendStatus`,
+`openFriends()`/`refreshFriends()`/`addFriend()`/`removeFriend()`. UI:
+`FriendsScreen` (`AppState.Friends`/`Routes.FRIENDS`, Pushed archetype) reached
+from a "ДРУЗЬЯ" button on `ProfileScreen` — share-your-code card (system
+share-sheet, reuses `utils/ShareText.shareText`), paste-a-code add field with
+inline status, and a friend list showing each friend's record vs. yours;
+degrades to "Рекорд скрыт" / offline copy when a doc is missing or unreachable.
+**Remaining (the documented boundary):** the code is the raw 28-char uid
+(shared, not typed) — a friendly short code would need a `friendCodes/{code}`
+allocation doc + rules like duels (deliberately skipped to avoid the rules
+change). A friend with no `leaderboard` doc yet (never finished a solo run) is
+invisible until their first non-daily run writes it. No mutual/accepted-friend
+model and no friends-only leaderboard slice (would need writes to shared docs →
+new rules).
+
 ## Larger v2 scope (from the design README BUILD PLAN, reconciled)
 
 Already present in the codebase: Navigation-Compose, Room
@@ -213,7 +237,9 @@ Remaining bets, priority order:
    **no Cloud Functions** (would force Blaze). Tradeoff: scores are
    client-asserted, bounded by `firestore.rules`. Content pipeline runs as an
    offline script, not a cron. *Leaderboard slice shipped (see Stub #3).*
-   Next: Daily online + Duel + profile/friends on the same model.
+   ~~Next: Daily online + Duel + profile/friends on the same model.~~ — ALL
+   DONE (daily Stub #4, duel Stub #9, friends Stub #12). The Firebase backend
+   bet is fully delivered within the Spark/no-Functions envelope.
 3. ~~**Daily Challenge online** — live stats (item 4)~~ — DONE (shared
    stats shipped on the Firebase model; deterministic track stands in until
    the content pipeline curates one, priority #8).

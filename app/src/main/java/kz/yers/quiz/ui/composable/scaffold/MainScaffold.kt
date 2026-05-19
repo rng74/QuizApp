@@ -68,13 +68,15 @@ private fun String?.scaffoldOwnsTopBar(): Boolean =
 
 /** Pushed screens get the scaffold's back+title bar (no bottom nav). */
 private fun String?.isPushed(): Boolean =
-    this == Routes.SETTINGS || this == Routes.SHOP || this == Routes.NOTIFICATIONS
+    this == Routes.SETTINGS || this == Routes.SHOP ||
+        this == Routes.NOTIFICATIONS || this == Routes.FRIENDS
 
 private fun String?.pushedTitle(): String =
     when (this) {
         Routes.SETTINGS -> "НАСТРОЙКИ"
         Routes.SHOP -> "МАГАЗИН ПОДСКАЗОК"
         Routes.NOTIFICATIONS -> "УВЕДОМЛЕНИЯ"
+        Routes.FRIENDS -> "ДРУЗЬЯ"
         else -> ""
     }
 
