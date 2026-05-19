@@ -2,7 +2,6 @@ package kz.yers.quiz.ui.composable.hints
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kz.yers.quiz.R
 import kz.yers.quiz.model.HintType
+import kz.yers.quiz.ui.composable.manga.mangaClickable
+import kz.yers.quiz.ui.composable.manga.mangaPressNudge
+import kz.yers.quiz.ui.composable.manga.rememberMangaPressState
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
@@ -93,6 +95,7 @@ private fun HintCell(
     val borderWidth = if (hasCharges) QuizStrokes.panel else QuizStrokes.regular
     val contentAlpha = if (disabled) 0.4f else 1f
 
+    val press = rememberMangaPressState(enabled = !disabled)
     Box(
         modifier =
             modifier
@@ -100,9 +103,10 @@ private fun HintCell(
                 .clip(shape)
                 .background(backgroundColor)
                 .border(borderWidth, borderColor, shape)
-                .clickable(enabled = !disabled) {
+                .mangaClickable(press, enabled = !disabled) {
                     if (count > 0) onUse() else onRequestAd()
-                }.padding(horizontal = 10.dp, vertical = 8.dp),
+                }.mangaPressNudge(press)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -2,7 +2,6 @@ package kz.yers.quiz.ui.composable.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +32,9 @@ import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.composable.manga.MangaSwitchRow
+import kz.yers.quiz.ui.composable.manga.mangaClickable
+import kz.yers.quiz.ui.composable.manga.mangaPressNudge
+import kz.yers.quiz.ui.composable.manga.rememberMangaPressState
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
@@ -122,11 +124,13 @@ fun SettingsScreen(
                 }
 
                 SettingsSection(title = "ПРОЧЕЕ") {
+                    val replayPress = rememberMangaPressState()
                     Row(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .clickable(onClick = actions.onReplayTutorial)
+                                .mangaClickable(replayPress, onClick = actions.onReplayTutorial)
+                                .mangaPressNudge(replayPress)
                                 .padding(vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

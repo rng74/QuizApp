@@ -3,7 +3,6 @@ package kz.yers.quiz.ui.composable.screen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +48,9 @@ import kz.yers.quiz.R
 import kz.yers.quiz.model.DailyLiveStats
 import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.ui.composable.manga.MangaIcons
+import kz.yers.quiz.ui.composable.manga.mangaClickable
+import kz.yers.quiz.ui.composable.manga.mangaPressShadow
+import kz.yers.quiz.ui.composable.manga.rememberMangaPressState
 import kz.yers.quiz.ui.theme.BangersFamily
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizShadows
@@ -102,24 +104,22 @@ private fun OffsetCard(
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(radius)
+    val press = rememberMangaPressState()
     Box(
         modifier =
             modifier
                 .padding(end = shadowOffset, bottom = shadowOffset)
-                .drawBehind {
-                    val o = shadowOffset.toPx()
-                    val r = radius.toPx()
-                    drawRoundRect(
-                        color = QuizColors.ink,
-                        topLeft = Offset(o, o),
-                        size = Size(size.width, size.height),
-                        cornerRadius = CornerRadius(r, r),
-                    )
-                }
+                .mangaPressShadow(
+                    state = press,
+                    restingShadow = shadowOffset,
+                    cornerRadius = radius,
+                )
                 .clip(shape)
                 .background(background)
                 .border(border, QuizColors.ink, shape)
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+                .then(
+                    if (onClick != null) Modifier.mangaClickable(press, onClick = onClick) else Modifier,
+                ),
     ) {
         content()
     }

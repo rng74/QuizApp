@@ -14,7 +14,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,6 +72,9 @@ import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaPanel
 import kz.yers.quiz.ui.composable.manga.SpeechBubble
+import kz.yers.quiz.ui.composable.manga.mangaClickable
+import kz.yers.quiz.ui.composable.manga.mangaPressNudge
+import kz.yers.quiz.ui.composable.manga.rememberMangaPressState
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
@@ -475,6 +477,7 @@ fun QuizScreen(
 @Composable
 private fun CloseButton(onClick: () -> Unit) {
     val shape = RoundedCornerShape(QuizRadii.button)
+    val press = rememberMangaPressState()
     Box(
         modifier =
             Modifier
@@ -482,7 +485,8 @@ private fun CloseButton(onClick: () -> Unit) {
                 .clip(shape)
                 .background(Color.White)
                 .border(QuizStrokes.regular, QuizColors.ink, shape)
-                .clickable(onClick = onClick),
+                .mangaClickable(press, onClick = onClick)
+                .mangaPressNudge(press),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.material3.Icon(
@@ -575,6 +579,7 @@ private fun OptionTile(
             else -> 0.6f
         }
     val shape = RoundedCornerShape(QuizRadii.button)
+    val press = rememberMangaPressState(enabled)
     Box(
         modifier =
             modifier
@@ -584,11 +589,12 @@ private fun OptionTile(
                 .border(borderWidth, borderColor, shape)
                 .then(
                     if (enabled) {
-                        Modifier.clickable(onClick = onClick)
+                        Modifier.mangaClickable(press, onClick = onClick)
                     } else {
                         Modifier
                     },
-                ).padding(horizontal = 12.dp, vertical = 14.dp),
+                ).mangaPressNudge(press)
+                .padding(horizontal = 12.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
