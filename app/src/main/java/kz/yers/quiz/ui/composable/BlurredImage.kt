@@ -38,6 +38,8 @@ fun BlurredImage(
     )
 
     Box(modifier = modifier) {
+        // Cropped, heavily-blurred copy fills the panel so portrait posters don't
+        // leave bare side bars behind the fitted (whole) poster.
         SubcomposeAsyncImage(
             model =
                 ImageRequest.Builder(context)
@@ -46,6 +48,19 @@ fun BlurredImage(
                     .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().blur(24.dp),
+            loading = {},
+            error = {},
+            success = { SubcomposeAsyncImageContent() },
+        )
+        SubcomposeAsyncImage(
+            model =
+                ImageRequest.Builder(context)
+                    .data(url)
+                    .crossfade(true)
+                    .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxSize().blur(blurRadius),
             loading = {
                 Box(
