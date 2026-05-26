@@ -1,6 +1,7 @@
 package kz.yers.quiz
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -31,12 +32,15 @@ import java.time.ZoneId
  * Pixel 8 AVD (or similar 1080×2400 emulator) so the aspect ratio matches what
  * Play Store wants without any post-crop step.
  *
- * Run:
- *   ./gradlew :app:connectedDebugAndroidTest \
- *     --tests kz.yers.quiz.StoreScreenshotTest
+ * Run (does not auto-uninstall — keeps the APK so we can pull the PNGs):
+ *   adb install -r -t app/build/outputs/apk/debug/app-debug.apk
+ *   adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+ *   adb shell am instrument -w -e class kz.yers.quiz.StoreScreenshotTest \
+ *     kz.yers.quiz.test/androidx.test.runner.AndroidJUnitRunner
  *
- * Pull the results:
- *   adb pull /sdcard/Android/data/kz.yers.quiz/files/store_screenshots ./screenshots
+ * Pull the results (PNGs live in the target app's cacheDir — same process /
+ * UID as the instrumentation runner; run-as works on debug builds):
+ *   adb exec-out run-as kz.yers.quiz tar c cache/store_screenshots | tar x
  *
  * The PNGs are numbered to match STORE_LISTING.md §7 — paste them into Play
  * Console in that order.
@@ -55,17 +59,31 @@ class StoreScreenshotTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     private val outDir: File by lazy {
+        // Subtle: AndroidJUnitRunner runs instrumentation IN the target app's
+        // process (kz.yers.quiz, UID = the app's). The process's permitted_path
+        // is `/data/user/0/kz.yers.quiz` only — so writing through
+        // getInstrumentation().context (the TEST package's context, which points
+        // at `/data/user/0/kz.yers.quiz.test`) silently EACCESes, even though
+        // the test package "owns" it on disk. Use targetContext.cacheDir —
+        // same UID, writeable, and pre-created.
+        // Pull via:
+        //   adb exec-out run-as kz.yers.quiz tar c cache/store_screenshots | tar x
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        File(ctx.getExternalFilesDir(null), "store_screenshots").apply { mkdirs() }
+        File(ctx.cacheDir, "store_screenshots").apply {
+            mkdirs()
+            Log.i(TAG, "outDir=$absolutePath exists=${exists()} writable=${canWrite()}")
+        }
     }
 
     @Test
     fun captureStoreScreens() {
+        Log.i(TAG, "outDir = ${outDir.absolutePath}, exists=${outDir.exists()}, writable=${outDir.canWrite()}")
         // 0. Let onboarding settle. completeOnboarding() is idempotent and fast;
         //    calling it now means the test doesn't have to drive the 3 slides.
         composeRule.waitUntil(timeoutMillis = 15_000) {
             composeRule.activity.viewModel.onboardingResolved.value
         }
+        Log.i(TAG, "onboarding resolved, app state = ${composeRule.activity.viewModel.appState.value}")
         runOnMain { composeRule.activity.viewModel.completeOnboarding() }
         composeRule.waitForIdle()
 
@@ -159,8 +177,14 @@ class StoreScreenshotTest {
             file.outputStream().use { stream ->
                 image.compress(Bitmap.CompressFormat.PNG, 100, stream)
             }
-            println("StoreScreenshotTest: wrote ${file.absolutePath} (${image.width}x${image.height})")
-        }.onFailure { println("StoreScreenshotTest: $name failed — ${it.message}") }
+            Log.i(TAG, "wrote ${file.absolutePath} (${image.width}x${image.height})")
+        }.onFailure {
+            Log.e(TAG, "$name failed: ${it.message}", it)
+        }
+    }
+
+    companion object {
+        private const val TAG = "StoreScreenshotTest"
     }
 
     /**
