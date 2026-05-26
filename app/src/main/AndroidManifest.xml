@@ -37,9 +37,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.QuizApp"
         tools:targetApi="31">
-        <!-- AdMob production APPLICATION_ID. The rewarded unit id used by
-             RewardedAdEffect.kt is still Google's sample/test id — swap that too
-             once a real rewarded ad unit is provisioned in the AdMob console. -->
+        <!-- AdMob production APPLICATION_ID. The rewarded ad unit id used by
+             RewardedAdEffect.kt belongs to the same AdMob account. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-8999744317337712~9846853431" />

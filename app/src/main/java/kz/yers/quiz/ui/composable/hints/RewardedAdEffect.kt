@@ -24,8 +24,10 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import kz.yers.quiz.ui.theme.QuizColors
 
-// Google's official sample rewarded unit. Swap for the real ad-unit id before release.
-private const val TEST_REWARDED_UNIT = "ca-app-pub-3940256099942544/5224354917"
+// Production rewarded ad unit (matches the AdMob app id in AndroidManifest.xml).
+// Newly-created AdMob units take 24–48 h before Google's inventory serves real
+// ads consistently; until then expect no-fill / test ads.
+private const val REWARDED_AD_UNIT = "ca-app-pub-8999744317337712/1049947691"
 
 private fun Context.findActivity(): Activity? {
     var ctx = this
@@ -60,7 +62,7 @@ fun RewardedAdEffect(
         }
         RewardedAd.load(
             context,
-            TEST_REWARDED_UNIT,
+            REWARDED_AD_UNIT,
             AdRequest.Builder().build(),
             object : RewardedAdLoadCallback() {
                 override fun onAdFailedToLoad(error: LoadAdError) {
