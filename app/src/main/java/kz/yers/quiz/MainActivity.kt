@@ -23,6 +23,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.analytics.Events
 import kz.yers.quiz.data.analytics.Params
+import kz.yers.quiz.data.diagnostics.ExitReasonReporter
 import kz.yers.quiz.model.NotificationDestination
 import kz.yers.quiz.navigation.AppNavHost
 import kz.yers.quiz.ui.theme.QuizAppTheme
@@ -42,6 +43,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Report any prior process exit (LMK, ANR, crash, etc.) before doing
+        // anything else — if we ourselves crash later in onCreate, we still want
+        // the previous exit's reason to be in Crashlytics.
+        ExitReasonReporter.report(this, analytics)
         SoundManager.init(this)
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
