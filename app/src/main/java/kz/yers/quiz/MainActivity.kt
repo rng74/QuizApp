@@ -33,7 +33,9 @@ import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: QuizAppViewModel by viewModel()
+    // `internal` so the androidTest source set (StoreScreenshotTest) can drive
+    // navigation from outside. Same Gradle module = internal members are visible.
+    internal val viewModel: QuizAppViewModel by viewModel()
     private val analytics: Analytics by inject()
 
     private val requestNotificationPermission =
