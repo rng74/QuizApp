@@ -8,6 +8,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kz.yers.quiz.data.analytics.Analytics
+import kz.yers.quiz.data.analytics.Events
+import kz.yers.quiz.data.analytics.Params
 import kz.yers.quiz.model.LeaderboardEntry
 import kz.yers.quiz.model.LeaderboardUiState
 
@@ -20,6 +23,7 @@ import kz.yers.quiz.model.LeaderboardUiState
  * with firestore.rules deployed. Until then every call degrades to [LeaderboardUiState.Offline].
  */
 class LeaderboardRepository(
+    private val analytics: Analytics,
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
@@ -64,13 +68,28 @@ class LeaderboardRepository(
                 } else {
                     null
                 }
-            LeaderboardUiState.Loaded(
-                rows = rows,
-                myRank = myRank,
-                myScore = myScore,
-                totalPlayers = total,
+            val loaded =
+                LeaderboardUiState.Loaded(
+                    rows = rows,
+                    myRank = myRank,
+                    myScore = myScore,
+                    totalPlayers = total,
+                )
+            analytics.log(
+                Events.LEADERBOARD_LOAD,
+                Params.RESULT to "ok",
+                Params.LEADERBOARD_TOTAL to total,
+                Params.LEADERBOARD_MY_RANK to (myRank ?: -1),
             )
-        }.getOrElse { LeaderboardUiState.Offline }
+            loaded
+        }.getOrElse {
+            analytics.log(
+                Events.LEADERBOARD_LOAD,
+                Params.RESULT to "offline",
+                Params.ERROR_MESSAGE to (it.message ?: "unknown"),
+            )
+            LeaderboardUiState.Offline
+        }
 
     /** Upsert the player's best score. Monotonic: only writes when [score] beats the stored one.
      *

@@ -20,18 +20,25 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import kz.yers.quiz.data.analytics.Analytics
+import kz.yers.quiz.data.analytics.Events
+import kz.yers.quiz.data.analytics.Params
 import kz.yers.quiz.model.NotificationDestination
 import kz.yers.quiz.navigation.AppNavHost
 import kz.yers.quiz.ui.theme.QuizAppTheme
 import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.utils.SoundManager
+import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : ComponentActivity() {
     private val viewModel: QuizAppViewModel by viewModel()
+    private val analytics: Analytics by inject()
 
     private val requestNotificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            analytics.log(Events.NOTIF_PERMISSION_RESULT, Params.GRANTED to granted)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,10 +82,11 @@ class MainActivity : ComponentActivity() {
      *  Unknown / missing values are silently ignored — see [NotificationDestination.parse]. */
     private fun routeFromIntent(intent: Intent?) {
         val raw = intent?.getStringExtra(NotificationDestination.EXTRA_KEY)
-        when (NotificationDestination.parse(raw)) {
+        val parsed = NotificationDestination.parse(raw) ?: return
+        analytics.log(Events.NOTIF_TRAY_TAPPED, Params.DESTINATION to parsed.name)
+        when (parsed) {
             NotificationDestination.INBOX -> viewModel.openNotifications()
             NotificationDestination.DAILY -> viewModel.openDaily()
-            null -> Unit
         }
     }
 }

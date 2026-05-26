@@ -15,6 +15,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kz.yers.quiz.QuizAppViewModel
+import kz.yers.quiz.data.analytics.Analytics
+import kz.yers.quiz.data.analytics.Events
+import kz.yers.quiz.data.analytics.Params
 import kz.yers.quiz.model.AppState
 import kz.yers.quiz.ui.composable.scaffold.MainScaffold
 import kz.yers.quiz.ui.composable.screen.DailyChallengeScreen
@@ -33,6 +36,7 @@ import kz.yers.quiz.ui.composable.screen.QuizScreen
 import kz.yers.quiz.ui.composable.screen.ResultScreen
 import kz.yers.quiz.ui.composable.screen.SettingsActions
 import kz.yers.quiz.ui.composable.screen.SettingsScreen
+import org.koin.compose.koinInject
 
 @Composable
 fun AppNavHost(
@@ -89,6 +93,16 @@ fun AppNavHost(
     }
 
     val currentRoute by navController.currentBackStackEntryAsState()
+    val analytics: Analytics = koinInject()
+
+    // Fire screen_view exactly once per route change. Firebase keys engagement
+    // time + bounce off this; not deduping would inflate counts on recomposition.
+    LaunchedEffect(currentRoute?.destination?.route) {
+        currentRoute?.destination?.route?.let { route ->
+            analytics.screenView(route)
+        }
+    }
+
     MainScaffold(
         currentRoute = currentRoute?.destination?.route,
         coins = viewModel.coins.intValue,
@@ -168,6 +182,12 @@ fun AppNavHost(
                     onAnswerSelected = viewModel::submitAnswer,
                     onNextQuestion = viewModel::moveToNextQuestion,
                     onPlaybackReady = viewModel::startTimer,
+                    onPlaybackError = {
+                        analytics.log(
+                            Events.QUIZ_PLAYBACK_ERROR,
+                            Params.MODE to (viewModel.activeMode.value?.name ?: "UNKNOWN"),
+                        )
+                    },
                     onUseHint = viewModel::useHint,
                     onRequestAd = viewModel::requestRewardedAd,
                     onAdComplete = viewModel::completeRewardedAd,
@@ -278,6 +298,7 @@ fun AppNavHost(
                     notifications = viewModel.notificationsList.value,
                     showPermissionBanner = denied,
                     onOpenSystemSettings = {
+                        analytics.log(Events.NOTIF_SETTINGS_OPENED)
                         val intent =
                             android.content.Intent(
                                 android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS,

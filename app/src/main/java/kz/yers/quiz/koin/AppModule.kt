@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import kz.yers.quiz.QuizAppViewModel
+import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.local.AppDatabase
 import kz.yers.quiz.data.notifications.NotificationRepository
 import kz.yers.quiz.data.prefs.UserPrefs
@@ -27,16 +28,17 @@ val appModule =
         single { get<AppDatabase>().dailyAttemptDao() }
         single { get<AppDatabase>().notificationDao() }
         single { get<AppDatabase>().friendDao() }
+        single { Analytics(androidContext()) }
         single { NotificationRepository(androidContext(), get()) }
         single { FriendsRepository() }
         single { UserPrefs(androidContext()) }
         single { AnimeRepository(androidContext(), get(), get()) }
-        single { LeaderboardRepository() }
+        single { LeaderboardRepository(analytics = get()) }
         single { DailyStatsRepository() }
-        single { DuelRepository() }
+        single { DuelRepository(analytics = get()) }
         viewModel {
             QuizAppViewModel(
-                get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
+                get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
             )
         }
     }

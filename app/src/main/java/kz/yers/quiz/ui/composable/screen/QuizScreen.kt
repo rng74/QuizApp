@@ -114,6 +114,7 @@ fun QuizScreen(
     onAnswerSelected: (String) -> Unit,
     onNextQuestion: () -> Unit,
     onPlaybackReady: () -> Unit,
+    onPlaybackError: () -> Unit = {},
     onUseHint: (HintType) -> Unit = {},
     onRequestAd: (HintType) -> Unit = {},
     onAdComplete: () -> Unit = {},
@@ -309,6 +310,7 @@ fun QuizScreen(
                 paused = pendingAdType != null,
                 onPlaybackReady = onPlaybackReady,
                 onPlaybackEnded = onNextQuestion,
+                onPlaybackError = { onPlaybackError() },
             )
 
             Spacer(Modifier.height(20.dp))

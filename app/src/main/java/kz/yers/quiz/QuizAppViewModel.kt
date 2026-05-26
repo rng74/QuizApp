@@ -15,6 +15,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kz.yers.quiz.data.analytics.Analytics
+import kz.yers.quiz.data.analytics.Events
+import kz.yers.quiz.data.analytics.Params
 import kz.yers.quiz.data.local.dao.DailyAttemptDao
 import kz.yers.quiz.data.local.dao.FriendDao
 import kz.yers.quiz.data.local.dao.RunHistoryDao
@@ -68,6 +71,7 @@ class QuizAppViewModel(
     private val notifications: NotificationRepository,
     private val friendDao: FriendDao,
     private val friends: FriendsRepository,
+    private val analytics: Analytics,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
@@ -220,6 +224,12 @@ class QuizAppViewModel(
             HintType.SKIP -> applySkip()
         }
         persistHintInventory(inv.withDecrement(type))
+        analytics.log(
+            Events.HINT_USED,
+            Params.HINT_TYPE to type.name,
+            Params.QUESTION_INDEX to state.currentQuestionIndex,
+            Params.MODE to (activeMode.value?.name ?: "UNKNOWN"),
+        )
     }
 
     private fun applyFiftyFifty(question: QuizQuestion) {
@@ -254,12 +264,14 @@ class QuizAppViewModel(
         if (!hintsAvailableForCurrentRun) return
         pendingRewardedAd.value = type
         stopTimer()
+        analytics.log(Events.HINT_AD_REQUESTED, Params.HINT_TYPE to type.name)
     }
 
     fun completeRewardedAd() {
         val type = pendingRewardedAd.value ?: return
         pendingRewardedAd.value = null
         persistHintInventory(hintInventory.value.withIncrement(type))
+        analytics.log(Events.HINT_AD_REWARDED, Params.HINT_TYPE to type.name)
         useHint(type)
         // SKIP advances to a new question, which restarts the timer via the next
         // question's AudioPlayer. The others stay on the current question, so resume here.
@@ -269,7 +281,11 @@ class QuizAppViewModel(
     }
 
     fun cancelRewardedAd() {
+        val type = pendingRewardedAd.value
         pendingRewardedAd.value = null
+        if (type != null) {
+            analytics.log(Events.HINT_AD_CANCELED, Params.HINT_TYPE to type.name)
+        }
         if (appState.value is AppState.Quiz && userAnswer.value == null) {
             startTimer()
         }
@@ -287,6 +303,7 @@ class QuizAppViewModel(
     fun completeOnboarding() {
         needsOnboarding.value = false
         viewModelScope.launch { userPrefs.setTutorialCompleted(true) }
+        analytics.log(Events.ONBOARDING_COMPLETED)
     }
 
     fun openSettings() {
@@ -299,12 +316,17 @@ class QuizAppViewModel(
 
     fun openNotifications() {
         appState.value = AppState.Notifications
+        analytics.log(
+            Events.NOTIF_INBOX_OPENED,
+            Params.UNREAD_COUNT to unreadCount.intValue,
+        )
         viewModelScope.launch { notifications.markAllRead() }
     }
 
     fun openFriends() {
         appState.value = AppState.Friends
         addFriendStatus.value = null
+        analytics.log(Events.FRIENDS_OPENED, Params.UNREAD_COUNT to friendsList.value.size)
         refreshFriends()
     }
 
@@ -332,6 +354,7 @@ class QuizAppViewModel(
             val mine = friends.myUid()
             if (code == mine) {
                 addFriendStatus.value = AddFriendResult.Self
+                analytics.log(Events.FRIEND_ADD_RESULT, Params.RESULT to "self")
                 return@launch
             }
             when (val res = friends.lookup(code)) {
@@ -343,10 +366,17 @@ class QuizAppViewModel(
                         )
                     }
                     addFriendStatus.value = AddFriendResult.Ok
+                    analytics.log(Events.FRIEND_ADD_RESULT, Params.RESULT to "ok")
                 }
 
-                FriendLookup.NotFound -> addFriendStatus.value = AddFriendResult.NotFound
-                FriendLookup.Offline -> addFriendStatus.value = AddFriendResult.Offline
+                FriendLookup.NotFound -> {
+                    addFriendStatus.value = AddFriendResult.NotFound
+                    analytics.log(Events.FRIEND_ADD_RESULT, Params.RESULT to "not_found")
+                }
+                FriendLookup.Offline -> {
+                    addFriendStatus.value = AddFriendResult.Offline
+                    analytics.log(Events.FRIEND_ADD_RESULT, Params.RESULT to "offline")
+                }
             }
         }
     }
@@ -354,6 +384,7 @@ class QuizAppViewModel(
     fun removeFriend(uid: String) {
         friendScores.remove(uid)
         viewModelScope.launch { withContext(Dispatchers.IO) { friendDao.delete(uid) } }
+        analytics.log(Events.FRIEND_REMOVED)
     }
 
     fun clearAddFriendStatus() {
@@ -365,7 +396,19 @@ class QuizAppViewModel(
         val price = type.coinPrice
         viewModelScope.launch {
             val ok = mutateCoins { it - price }
-            if (ok) persistHintInventory(hintInventory.value.withIncrement(type))
+            if (ok) {
+                persistHintInventory(hintInventory.value.withIncrement(type))
+                analytics.log(
+                    Events.HINT_BOUGHT_COINS,
+                    Params.HINT_TYPE to type.name,
+                    Params.PRICE to price,
+                )
+                analytics.log(
+                    Events.COINS_SPENT,
+                    Params.COINS_DELTA to price,
+                    Params.COINS_SINK to "hint",
+                )
+            }
         }
     }
 
@@ -391,43 +434,62 @@ class QuizAppViewModel(
     fun setSoundEnabled(value: Boolean) {
         soundEnabled.value = value
         viewModelScope.launch { userPrefs.setSoundEnabled(value) }
+        logSettingToggle("sound", value)
     }
 
     fun setReduceMotion(value: Boolean) {
         a11y.value = a11y.value.copy(reduceMotion = value)
         viewModelScope.launch { userPrefs.setReduceMotion(value) }
+        logSettingToggle("reduce_motion", value)
     }
 
     fun setColorBlindSafe(value: Boolean) {
         a11y.value = a11y.value.copy(colorBlindSafe = value)
         viewModelScope.launch { userPrefs.setColorBlindSafe(value) }
+        logSettingToggle("color_blind_safe", value)
     }
 
     fun setLargerText(value: Boolean) {
         a11y.value = a11y.value.copy(largerText = value)
         viewModelScope.launch { userPrefs.setLargerText(value) }
+        logSettingToggle("larger_text", value)
     }
 
     fun setDyslexiaFont(value: Boolean) {
         a11y.value = a11y.value.copy(dyslexiaFont = value)
         viewModelScope.launch { userPrefs.setDyslexiaFont(value) }
+        logSettingToggle("dyslexia_font", value)
+    }
+
+    private fun logSettingToggle(
+        key: String,
+        value: Boolean,
+    ) {
+        analytics.log(Events.SETTING_TOGGLED, Params.KEY to key, Params.VALUE to value)
     }
 
     fun resetHighScore() {
         repository.clearHighScore()
         _highScore.intValue = 0
+        analytics.log(Events.HIGH_SCORE_RESET)
     }
 
     fun replayTutorial() {
         viewModelScope.launch { userPrefs.setTutorialCompleted(false) }
         needsOnboarding.value = true
         appState.value = AppState.Menu
+        analytics.log(Events.TUTORIAL_REPLAYED)
     }
 
     fun openDaily() {
         viewModelScope.launch {
             refreshDailyState()
             appState.value = AppState.Daily
+            analytics.log(
+                Events.DAILY_OPENED,
+                Params.STREAK_DAYS to streakDays.intValue,
+                "already_played" to (dailyState.value.attempt != null),
+            )
         }
     }
 
@@ -453,6 +515,7 @@ class QuizAppViewModel(
         stopDuelObserver()
         duelState.value = DuelState()
         appState.value = AppState.DuelSetup
+        analytics.log(Events.DUEL_EXITED, Params.DUEL_PHASE to "setup_opened")
     }
 
     /** Single point for tearing down the Firestore duel snapshot listener. */
@@ -595,6 +658,10 @@ class QuizAppViewModel(
         questionHintState.value = QuestionHintState()
         skipRequested = false
         appState.value = AppState.Loading
+        analytics.log(
+            Events.DUEL_ROUND_STARTED,
+            Params.DUEL_ROLE to (s.role?.name ?: "UNKNOWN"),
+        )
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 quizQuestions =
@@ -615,6 +682,11 @@ class QuizAppViewModel(
     }
 
     fun exitDuel() {
+        analytics.log(
+            Events.DUEL_EXITED,
+            Params.DUEL_PHASE to duelState.value.phase.name,
+            Params.DUEL_ROLE to (duelState.value.role?.name ?: "UNKNOWN"),
+        )
         isDuelRun = false
         stopDuelObserver()
         duelState.value = DuelState()
@@ -731,6 +803,7 @@ class QuizAppViewModel(
         recordModeJustSet.value = null
         questionHintState.value = QuestionHintState()
         skipRequested = false
+        analytics.log(Events.QUIZ_STARTED, Params.MODE to gameMode.name)
         loadQuizQuestions(gameMode)
     }
 
@@ -758,6 +831,10 @@ class QuizAppViewModel(
             }
             quizQuestions = listOf(question)
             totalQuestionsInRun.intValue = 1
+            analytics.log(
+                Events.DAILY_STARTED,
+                Params.STREAK_DAYS to streakDays.intValue,
+            )
             appState.value =
                 AppState.Quiz(currentQuestion = question, currentQuestionIndex = 0)
         }
@@ -827,12 +904,28 @@ class QuizAppViewModel(
             appState.value = AppState.Menu
             return
         }
-        if (selectedAnswer == state.currentQuestion.correctAnswer.titleRu) {
-            val basePoints = (timeRemaining.longValue / 1000L).toInt()
+        val isCorrect = selectedAnswer == state.currentQuestion.correctAnswer.titleRu
+        val timeRemainingMs = timeRemaining.longValue
+        if (isCorrect) {
+            val basePoints = (timeRemainingMs / 1000L).toInt()
             val multiplier = if (isDailyRun) 2 else 1
             score.intValue += basePoints * multiplier
         }
+        analytics.log(
+            Events.QUIZ_ANSWERED,
+            Params.MODE to mode(),
+            Params.QUESTION_INDEX to state.currentQuestionIndex,
+            Params.CORRECT to isCorrect,
+            Params.TIME_REMAINING_MS to timeRemainingMs,
+        )
     }
+
+    private fun mode(): String =
+        when {
+            isDailyRun -> "DAILY"
+            isDuelRun -> "DUEL"
+            else -> activeMode.value?.name ?: "UNKNOWN"
+        }
 
     fun moveToNextQuestion() {
         val state = appState.value
@@ -871,6 +964,35 @@ class QuizAppViewModel(
         }
         val previousBest = repository.getHighScore()
         isNewRecord.value = finalScore > previousBest
+        val currentIndexForAnalytics =
+            (appState.value as? AppState.Quiz)?.currentQuestionIndex ?: 0
+        val correctForAnalytics =
+            (appState.value as? AppState.Quiz)?.let { state ->
+                userAnswer.value == state.currentQuestion.correctAnswer.titleRu
+            } ?: false
+        val endedVia =
+            when {
+                userAnswer.value == null -> "timeout"
+                !correctForAnalytics -> "wrong"
+                currentIndexForAnalytics >= totalQuestionsInRun.intValue - 1 -> "complete"
+                else -> "advance" // shouldn't reach finishRun on advance; here for safety
+            }
+        analytics.log(
+            Events.QUIZ_FINISHED,
+            Params.MODE to mode(),
+            Params.SCORE to finalScore,
+            Params.QUESTION_INDEX to currentIndexForAnalytics,
+            Params.TOTAL_QUESTIONS to totalQuestionsInRun.intValue,
+            Params.DURATION_MS to durationMs,
+            Params.ENDED_VIA to endedVia,
+        )
+        if (isNewRecord.value && finalScore > 0) {
+            analytics.log(
+                Events.NEW_HIGH_SCORE,
+                Params.SCORE to finalScore,
+                Params.MODE to (mode?.name ?: "UNKNOWN"),
+            )
+        }
         recordModeJustSet.value =
             if (!isDailyRun && !isDuelRun && mode != null && finalScore > (bestScoreByMode.value[mode] ?: 0)) {
                 mode
@@ -918,6 +1040,17 @@ class QuizAppViewModel(
                 val earned = finalScore / COINS_PER_SCORE + streakBonus
                 if (earned > 0) {
                     mutateCoins { it + earned }
+                    analytics.log(
+                        Events.COINS_EARNED,
+                        Params.COINS_DELTA to earned,
+                        Params.COINS_SOURCE to if (streakBonus > 0) "streak_bonus" else "run",
+                    )
+                }
+                if (streakBonus > 0) {
+                    analytics.log(
+                        Events.STREAK_MILESTONE,
+                        Params.STREAK_DAYS to userPrefs.currentStreakDays.first(),
+                    )
                 }
                 lastRunCoins.intValue = earned
                 emitRunNotifications(
@@ -998,6 +1131,13 @@ class QuizAppViewModel(
 
     /** Quit mid-game from the immersive quiz: forfeit — no run recorded, no high score written. */
     fun abortQuiz() {
+        val atIndex = (appState.value as? AppState.Quiz)?.currentQuestionIndex ?: 0
+        analytics.log(
+            Events.QUIZ_FORFEITED,
+            Params.MODE to mode(),
+            Params.QUESTION_INDEX to atIndex,
+            Params.SCORE to score.intValue,
+        )
         stopTimer()
         isDailyRun = false
         isDuelRun = false
@@ -1029,6 +1169,11 @@ class QuizAppViewModel(
         duelState.value = state.copy(phase = DuelPhase.Finished, myScore = finalScore)
         isDuelRun = false
         appState.value = AppState.DuelResult
+        analytics.log(
+            Events.DUEL_FINISHED,
+            Params.SCORE to finalScore,
+            Params.DUEL_ROLE to (state.role?.name ?: "UNKNOWN"),
+        )
         if (state.code.isNotBlank()) {
             viewModelScope.launch {
                 duel.submitScore(

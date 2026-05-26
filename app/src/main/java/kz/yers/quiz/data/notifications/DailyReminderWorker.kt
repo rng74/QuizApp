@@ -7,6 +7,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.flow.first
+import kz.yers.quiz.data.analytics.Analytics
+import kz.yers.quiz.data.analytics.Events
+import kz.yers.quiz.data.analytics.Params
 import kz.yers.quiz.data.local.dao.DailyAttemptDao
 import kz.yers.quiz.data.prefs.UserPrefs
 import org.koin.core.component.KoinComponent
@@ -28,6 +31,7 @@ class DailyReminderWorker(
     private val dailyAttemptDao: DailyAttemptDao by inject()
     private val userPrefs: UserPrefs by inject()
     private val notifications: NotificationRepository by inject()
+    private val analytics: Analytics by inject()
 
     override suspend fun doWork(): Result {
         val today = LocalDate.now(ZoneId.systemDefault()).toEpochDay()
@@ -37,6 +41,12 @@ class DailyReminderWorker(
         val streak = userPrefs.currentStreakDays.first()
         val lastPlayed = userPrefs.lastPlayedEpochDay.first()
         val streakAtRisk = streak > 0 && lastPlayed == today - 1
+
+        analytics.log(
+            Events.DAILY_REMINDER_SHOWN,
+            Params.STREAK_AT_RISK to streakAtRisk,
+            Params.STREAK_DAYS to streak,
+        )
 
         if (streakAtRisk) {
             notifications.notify(

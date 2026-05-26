@@ -9,6 +9,9 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
+import kz.yers.quiz.data.analytics.Analytics
+import kz.yers.quiz.data.analytics.Events
+import kz.yers.quiz.data.analytics.Params
 import kotlin.random.Random
 
 /** Live view of a duel doc, pushed by the Firestore snapshot listener. */
@@ -50,6 +53,7 @@ sealed interface DuelJoinResult {
  * degrades to an Offline/NotFound result and the duel simply can't be created/joined.
  */
 class DuelRepository(
+    private val analytics: Analytics,
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
@@ -96,46 +100,74 @@ class DuelRepository(
                             }
                         },
                     )
-                if (created) return@runCatching DuelCreateResult.Ok(code, seed)
+                if (created) {
+                    analytics.log(
+                        Events.DUEL_CREATE,
+                        Params.RESULT to "ok",
+                        Params.DUEL_ROLE to "HOST",
+                    )
+                    return@runCatching DuelCreateResult.Ok(code, seed)
+                }
             }
             error("could not allocate a unique duel code")
-        }.getOrElse { DuelCreateResult.Offline }
+        }.getOrElse {
+            analytics.log(
+                Events.DUEL_CREATE,
+                Params.RESULT to "offline",
+                Params.ERROR_MESSAGE to (it.message ?: "unknown"),
+            )
+            DuelCreateResult.Offline
+        }
 
     /** Claim the guest slot of an existing duel. Idempotent if this device already joined. */
     suspend fun join(
         code: String,
         myName: String,
-    ): DuelJoinResult =
-        runCatching {
-            val uid = ensureUid()
-            val ref = col.document(code.uppercase())
-            await(
-                db.runTransaction<DuelJoinResult> { txn ->
-                    val snap = txn.get(ref)
-                    if (!snap.exists()) return@runTransaction DuelJoinResult.NotFound
-                    val hostUid = snap.getString("hostUid").orEmpty()
-                    val guestUid = snap.getString("guestUid").orEmpty()
-                    val seed = snap.getLong("seed") ?: 0L
-                    val hostName = snap.getString("hostName").orEmpty().ifBlank { "Соперник" }
-                    when {
-                        hostUid == uid -> DuelJoinResult.NotFound
-                        guestUid.isNotEmpty() && guestUid != uid -> DuelJoinResult.Full
-                        else -> {
-                            if (guestUid.isEmpty()) {
-                                txn.update(
-                                    ref,
-                                    mapOf(
-                                        "guestUid" to uid,
-                                        "guestName" to myName.take(24),
-                                    ),
-                                )
+    ): DuelJoinResult {
+        val result =
+            runCatching {
+                val uid = ensureUid()
+                val ref = col.document(code.uppercase())
+                await(
+                    db.runTransaction<DuelJoinResult> { txn ->
+                        val snap = txn.get(ref)
+                        if (!snap.exists()) return@runTransaction DuelJoinResult.NotFound
+                        val hostUid = snap.getString("hostUid").orEmpty()
+                        val guestUid = snap.getString("guestUid").orEmpty()
+                        val seed = snap.getLong("seed") ?: 0L
+                        val hostName = snap.getString("hostName").orEmpty().ifBlank { "Соперник" }
+                        when {
+                            hostUid == uid -> DuelJoinResult.NotFound
+                            guestUid.isNotEmpty() && guestUid != uid -> DuelJoinResult.Full
+                            else -> {
+                                if (guestUid.isEmpty()) {
+                                    txn.update(
+                                        ref,
+                                        mapOf(
+                                            "guestUid" to uid,
+                                            "guestName" to myName.take(24),
+                                        ),
+                                    )
+                                }
+                                DuelJoinResult.Ok(seed = seed, hostName = hostName)
                             }
-                            DuelJoinResult.Ok(seed = seed, hostName = hostName)
                         }
-                    }
+                    },
+                )
+            }.getOrElse { DuelJoinResult.Offline }
+        analytics.log(
+            Events.DUEL_JOIN,
+            Params.RESULT to
+                when (result) {
+                    is DuelJoinResult.Ok -> "ok"
+                    DuelJoinResult.NotFound -> "not_found"
+                    DuelJoinResult.Full -> "full"
+                    DuelJoinResult.Offline -> "offline"
                 },
-            )
-        }.getOrElse { DuelJoinResult.Offline }
+            Params.DUEL_ROLE to "GUEST",
+        )
+        return result
+    }
 
     /** Write this device's final score once. Best-effort — a failure must not break the run. */
     suspend fun submitScore(
