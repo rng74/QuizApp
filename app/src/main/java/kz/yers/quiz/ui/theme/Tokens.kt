@@ -34,8 +34,32 @@ object QuizColors {
     val bronzeDeep = Color(0xFFA05A2C)
     val coinLight = Color(0xFFFFF8B6)
     val coinDeep = Color(0xFFFFC933)
+    val coinDark = Color(0xFFCC8800)
     val flameMid = Color(0xFFFF8A00)
     val flameHot = Color(0xFFFFEA00)
+
+    // Achievement badge medals. Slightly muted vs. leaderboard podium gold/silver
+    // so locked/unlocked states read clearly on the paper background. Use these
+    // (not `gold`/`silver`) for ProfileScreen badges.
+    val badgeSilver = Color(0xFFB0B0B0)
+
+    // Onboarding "Без постера" demo card.
+    val onboardingPosterTitle = Color(0xFF3A2A1D)
+    val onboardingPosterBody = Color(0xFF8A4A2A)
+
+    // Profile header gradient end (paired with `ink` for the dark-purple wash).
+    val profileHeaderEnd = Color(0xFF3A2A4A)
+
+    // BlurredImage placeholder + error backgrounds (dark muted neutrals).
+    val posterPlaceholder = Color(0xFF1F1F1F)
+    val posterError = Color(0xFF3A1F1F)
+
+    // MangaChip red variant background.
+    val chipRedBg = Color(0xFFFF726D)
+
+    // StreakDay empty-state outline & MangaSwitchRow off-state track.
+    val mutedStroke = Color(0xFF999999)
+    val switchOffTrack = Color(0xFFDDDDDD)
 }
 
 object QuizStrokes {

@@ -31,4 +31,31 @@
     <string name="ad_dialog_remaining">Осталось: %1$d сек</string>
     <string name="ad_dialog_cancel">Закрыть</string>
     <string name="ad_dialog_reward_ready">Подсказка получена!</string>
+
+    <!-- Relative time used by NotificationInboxScreen — replaces the bare
+         "МИН / Ч / ДН НАЗАД" strings so 1/2/5 forms grammar-match. -->
+    <string name="time_just_now">ТОЛЬКО ЧТО</string>
+    <plurals name="time_minutes_ago">
+        <item quantity="one">%d МИНУТУ НАЗАД</item>
+        <item quantity="few">%d МИНУТЫ НАЗАД</item>
+        <item quantity="many">%d МИНУТ НАЗАД</item>
+        <item quantity="other">%d МИН НАЗАД</item>
+    </plurals>
+    <plurals name="time_hours_ago">
+        <item quantity="one">%d ЧАС НАЗАД</item>
+        <item quantity="few">%d ЧАСА НАЗАД</item>
+        <item quantity="many">%d ЧАСОВ НАЗАД</item>
+        <item quantity="other">%d Ч НАЗАД</item>
+    </plurals>
+    <plurals name="time_days_ago">
+        <item quantity="one">%d ДЕНЬ НАЗАД</item>
+        <item quantity="few">%d ДНЯ НАЗАД</item>
+        <item quantity="many">%d ДНЕЙ НАЗАД</item>
+        <item quantity="other">%d ДН НАЗАД</item>
+    </plurals>
+
+    <!-- Notification permission denied banner (NotificationInboxScreen). -->
+    <string name="notif_permission_banner_title">Уведомления отключены</string>
+    <string name="notif_permission_banner_body">Включи их, чтобы не пропустить дневной вызов и серию.</string>
+    <string name="notif_permission_banner_action">ОТКРЫТЬ НАСТРОЙКИ</string>
 </resources>

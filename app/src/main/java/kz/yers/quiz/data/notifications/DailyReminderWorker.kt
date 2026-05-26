@@ -60,9 +60,17 @@ class DailyReminderWorker(
         private const val WORK_NAME = "daily_reminder"
         private const val REMINDER_HOUR = 19
 
-        /** Idempotent: enqueues a ~daily check, first fire at the next 19:00 local. */
+        /** Idempotent: enqueues a ~daily check, first fire at the next 19:00 local.
+         *
+         *  Time zone: both the epoch-day key (used by [DailyAttemptDao.forDay] and
+         *  [AnimeRepository.getDailyQuestion]) and this reminder anchor follow
+         *  [ZoneId.systemDefault]. A player who flies across time zones may see
+         *  a same-day reminder shift, but the daily challenge resolves to a
+         *  consistent track for "today" on the same device.
+         */
         fun schedule(context: Context) {
-            val now = LocalDateTime.now()
+            val zone = ZoneId.systemDefault()
+            val now = LocalDateTime.now(zone)
             var next = now.with(LocalTime.of(REMINDER_HOUR, 0))
             if (!next.isAfter(now)) next = next.plusDays(1)
             val initialDelayMinutes =

@@ -8,6 +8,13 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Room schema export — locks the v4 schema as the migration baseline.
+// Every PR that bumps `@Database(version = …)` must commit the new schema
+// JSON here and add a corresponding Migration in data/local/Migrations.kt.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "kz.yers.quiz"
     compileSdk = 36
@@ -27,7 +34,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

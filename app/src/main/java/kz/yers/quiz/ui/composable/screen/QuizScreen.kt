@@ -53,6 +53,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -619,6 +621,12 @@ private fun OptionTile(
                 fontFamily = bodyFontFamily(),
                 fontSize = (14f * scale).sp,
                 lineHeight = (18f * scale).sp,
+                // Long anime titles ("Атака на Титанов: Финальный сезон Часть 2", 39 chars)
+                // would otherwise blow the tile out at largerText=true / fontScale=1.3.
+                // Two-line cap with ellipsis keeps the row height predictable.
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Start,
             )
         }
     }

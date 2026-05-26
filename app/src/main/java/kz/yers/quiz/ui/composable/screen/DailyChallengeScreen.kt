@@ -148,7 +148,7 @@ private fun DailyHero(
                 }.clip(shape)
                 .background(
                     Brush.linearGradient(
-                        colors = listOf(Color(0xFFFFD35B), QuizColors.tint),
+                        colors = listOf(QuizColors.tintGlow, QuizColors.tint),
                     ),
                 ).border(QuizStrokes.panel, QuizColors.ink, shape),
     ) {

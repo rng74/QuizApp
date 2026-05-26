@@ -28,7 +28,7 @@ fun StreakDay(
     val tint = LocalModeTint.current
     val (background, content, borderWidth) =
         when (state) {
-            StreakDayState.Empty -> Triple(Color.White, Color(0xFF999999), 2.dp)
+            StreakDayState.Empty -> Triple(Color.White, QuizColors.mutedStroke, 2.dp)
             StreakDayState.Done -> Triple(tint, QuizColors.ink, 2.dp)
             StreakDayState.Today -> Triple(QuizColors.streakFire, Color.White, 3.dp)
         }

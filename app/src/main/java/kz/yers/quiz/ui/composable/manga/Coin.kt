@@ -12,7 +12,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -37,9 +36,9 @@ fun Coin(
                             Brush.radialGradient(
                                 colors =
                                     listOf(
-                                        Color(0xFFFFF8B6),
-                                        Color(0xFFFFC933),
-                                        Color(0xFFCC8800),
+                                        QuizColors.coinLight,
+                                        QuizColors.coinDeep,
+                                        QuizColors.coinDark,
                                     ),
                                 center = Offset(size.width * 0.35f, size.height * 0.30f),
                                 radius = size.maxDimension * 0.7f,

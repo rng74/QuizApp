@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ (API 31+) data extraction rules.
+    Two channels:
+      * cloud-backup  — Google's Auto Backup to Drive
+      * device-transfer — direct device-to-device migration (cable / wifi)
+    We allow both at the top level, then exclude:
+      - Firebase auth state (would let a restored install impersonate the previous user)
+      - the Room db file (player runs/streaks/friends/notifications are restorable, but auth tying them
+        to a uid would mismatch; cleaner to start fresh and let the leaderboard doc re-anchor)
+      - rewarded-ad / AdMob internal state
+    If you decide to lock everything down, swap the open <include> blocks for a top-level
+    <cloud-backup disableIfNoEncryptionCapabilities="true"> with no includes.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="com.google.firebase.auth.api.Store.AnonymousUser" />
+        <exclude domain="file" path="databases/quiz.db" />
+        <exclude domain="file" path="databases/quiz.db-journal" />
+        <exclude domain="file" path="databases/quiz.db-shm" />
+        <exclude domain="file" path="databases/quiz.db-wal" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="com.google.firebase.auth.api.Store.AnonymousUser" />
+    </device-transfer>
+</data-extraction-rules>

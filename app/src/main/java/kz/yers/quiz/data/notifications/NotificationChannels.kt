@@ -22,10 +22,14 @@ object NotificationChannels {
             ).apply { description = "Рекорды, серии, результаты дуэлей" },
         )
         manager.createNotificationChannel(
+            // HIGH so the streak-at-risk reminder surfaces as a heads-up — the
+            // whole point of the channel is "don't miss this". Note: Android
+            // freezes a channel's importance at creation; existing v3 installs
+            // keep DEFAULT. The user can always tighten in system settings.
             NotificationChannel(
                 REMINDERS,
                 "Напоминания",
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_HIGH,
             ).apply { description = "Дневной вызов и серия" },
         )
     }

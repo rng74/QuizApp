@@ -24,11 +24,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kz.yers.quiz.R
 import kz.yers.quiz.data.local.entity.NotificationEntity
 import kz.yers.quiz.data.notifications.NotificationType
+import kz.yers.quiz.ui.composable.manga.MangaButton
+import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.SpeechBubble
 import kz.yers.quiz.ui.theme.QuizColors
@@ -37,8 +42,12 @@ import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
 
 @Composable
-fun NotificationInboxScreen(notifications: List<NotificationEntity>) {
-    if (notifications.isEmpty()) {
+fun NotificationInboxScreen(
+    notifications: List<NotificationEntity>,
+    showPermissionBanner: Boolean = false,
+    onOpenSystemSettings: () -> Unit = {},
+) {
+    if (notifications.isEmpty() && !showPermissionBanner) {
         Box(
             modifier =
                 Modifier
@@ -59,8 +68,49 @@ fun NotificationInboxScreen(notifications: List<NotificationEntity>) {
                 .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (showPermissionBanner) {
+            item(key = "permission-banner") {
+                PermissionBanner(onOpenSystemSettings = onOpenSystemSettings)
+            }
+        }
         items(notifications, key = { it.id }) { item ->
             NotificationRow(item)
+        }
+    }
+}
+
+/** Top-of-inbox prompt rendered when POST_NOTIFICATIONS was denied. Inbox keeps
+ *  working (it's DB-backed) but cross-device reminders won't fire until granted. */
+@Composable
+private fun PermissionBanner(onOpenSystemSettings: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(end = QuizShadows.small, bottom = QuizShadows.small)
+                .clip(shape)
+                .background(QuizColors.tintGlow)
+                .border(QuizStrokes.panel, QuizColors.ink, shape)
+                .padding(14.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.notif_permission_banner_title),
+                fontFamily = RussoOneFamily,
+                fontSize = 14.sp,
+                color = QuizColors.ink,
+            )
+            Text(
+                text = stringResource(R.string.notif_permission_banner_body),
+                fontSize = 13.sp,
+                color = QuizColors.ink.copy(alpha = 0.85f),
+            )
+            MangaButton(
+                label = stringResource(R.string.notif_permission_banner_action),
+                variant = MangaButtonVariant.Ink,
+                onClick = onOpenSystemSettings,
+            )
         }
     }
 }
@@ -125,7 +175,7 @@ private fun NotificationRow(item: NotificationEntity) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = relativeTime(item.createdAt),
+                    text = relativeTimeLabel(item.createdAt),
                     fontWeight = FontWeight.Bold,
                     fontSize = 10.sp,
                     letterSpacing = 0.8.sp,
@@ -156,13 +206,28 @@ private fun NotificationType?.tint(): Color =
         else -> QuizColors.paper2
     }
 
-private fun relativeTime(epochMs: Long): String {
+/**
+ * Localised relative-time label. Russian needs three plural buckets (one / few / many)
+ * for grammatical correctness — "1 минуту", "2 минуты", "5 минут". Bare integer
+ * concatenation ("$minutes МИН НАЗАД") read as broken Russian to native speakers.
+ * The plural resources live under R.plurals.time_*_ago.
+ */
+@Composable
+private fun relativeTimeLabel(epochMs: Long): String {
+    // Recomputed per recomposition — cheap arithmetic, fresh enough for an inbox
+    // that's already re-rendered on every NotificationDao Flow emission.
     val diff = System.currentTimeMillis() - epochMs
-    val minutes = diff / 60_000L
+    val minutes = (diff / 60_000L).toInt().coerceAtLeast(0)
     return when {
-        minutes < 1 -> "ТОЛЬКО ЧТО"
-        minutes < 60 -> "$minutes МИН НАЗАД"
-        minutes < 24 * 60 -> "${minutes / 60} Ч НАЗАД"
-        else -> "${minutes / (24 * 60)} ДН НАЗАД"
+        minutes < 1 -> stringResource(R.string.time_just_now)
+        minutes < 60 -> pluralStringResource(R.plurals.time_minutes_ago, minutes, minutes)
+        minutes < 24 * 60 -> {
+            val hours = minutes / 60
+            pluralStringResource(R.plurals.time_hours_ago, hours, hours)
+        }
+        else -> {
+            val days = minutes / (24 * 60)
+            pluralStringResource(R.plurals.time_days_ago, days, days)
+        }
     }
 }

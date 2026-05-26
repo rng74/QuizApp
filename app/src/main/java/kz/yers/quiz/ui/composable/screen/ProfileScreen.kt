@@ -144,7 +144,7 @@ private fun ProfileHeader(state: ProfileState) {
                 .fillMaxWidth()
                 .background(
                     Brush.linearGradient(
-                        colors = listOf(QuizColors.ink, Color(0xFF3A2A4A)),
+                        colors = listOf(QuizColors.ink, QuizColors.profileHeaderEnd),
                     ),
                 )
                 .drawBehind {
@@ -208,13 +208,21 @@ private fun ProfileHeader(state: ProfileState) {
     }
 }
 
+private const val MAX_LEVEL = 25
+
 @Composable
 private fun XpBar(
     xp: Int,
     xpForNext: Int,
     level: Int,
 ) {
-    val progress = if (xpForNext == 0) 0f else (xp.toFloat() / xpForNext.toFloat()).coerceIn(0f, 1f)
+    val atMax = level >= MAX_LEVEL
+    val progress =
+        when {
+            atMax -> 1f
+            xpForNext == 0 -> 0f
+            else -> (xp.toFloat() / xpForNext.toFloat()).coerceIn(0f, 1f)
+        }
     val shape = RoundedCornerShape(QuizRadii.pill)
     Column {
         Box(
@@ -236,7 +244,7 @@ private fun XpBar(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "XP до Лвл ${level + 1}: $xp / $xpForNext",
+            text = if (atMax) "МАКС. УРОВЕНЬ" else "XP до Лвл ${level + 1}: $xp / $xpForNext",
             color = Color.White.copy(alpha = 0.85f),
             fontWeight = FontWeight.Medium,
             fontSize = 11.sp,
@@ -392,8 +400,8 @@ private fun Badge(
             QuizColors.paper2 to QuizColors.ink.copy(alpha = 0.35f)
         } else {
             when (id.variant) {
-                AchievementVariant.Gold -> Color(0xFFFFC933) to Color.White
-                AchievementVariant.Silver -> Color(0xFFB0B0B0) to Color.White
+                AchievementVariant.Gold -> QuizColors.coinDeep to Color.White
+                AchievementVariant.Silver -> QuizColors.badgeSilver to Color.White
                 AchievementVariant.Fire -> QuizColors.streakFire to Color.White
                 AchievementVariant.Purple -> QuizColors.hintPurple to Color.White
                 AchievementVariant.Regular -> Color.White to QuizColors.ink

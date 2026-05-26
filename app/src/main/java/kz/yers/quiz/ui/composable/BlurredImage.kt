@@ -21,7 +21,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
+import kz.yers.quiz.BuildConfig
 import kz.yers.quiz.model.LocalA11y
+import kz.yers.quiz.ui.theme.QuizColors
 
 @Composable
 fun BlurredImage(
@@ -57,20 +59,22 @@ fun BlurredImage(
             modifier = Modifier.fillMaxSize().blur(24.dp),
             loading = {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Color(0xFF1F1F1F)),
+                    modifier = Modifier.fillMaxSize().background(QuizColors.posterPlaceholder),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(color = Color.White)
                 }
             },
             error = {
-                Log.e(
-                    "BlurredImage",
-                    "Failed to load $url: ${it.result.throwable.message}",
-                    it.result.throwable,
-                )
+                if (BuildConfig.DEBUG) {
+                    Log.e(
+                        "BlurredImage",
+                        "Failed to load $url: ${it.result.throwable.message}",
+                        it.result.throwable,
+                    )
+                }
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Color(0xFF3A1F1F)),
+                    modifier = Modifier.fillMaxSize().background(QuizColors.posterError),
                 )
             },
             success = { SubcomposeAsyncImageContent() },

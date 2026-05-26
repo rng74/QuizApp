@@ -21,7 +21,7 @@ import kz.yers.quiz.data.local.entity.RunHistoryEntity
         FriendEntity::class,
     ],
     version = 4,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun runHistoryDao(): RunHistoryDao
@@ -33,13 +33,18 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun friendDao(): FriendDao
 
     companion object {
+        // v4 is the baseline released schema. Any future schema bump MUST add a
+        // Migration in Migrations.kt and pass it via .addMigrations(…). Removing
+        // the destructive fallback means a missing migration will crash at
+        // startup — that's intentional: it surfaces the regression at dev time
+        // instead of silently wiping every player's runs/streaks/friends/coins.
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "quiz.db",
             )
-                .fallbackToDestructiveMigration(dropAllTables = true)
+                .addMigrations(*Migrations.ALL)
                 .build()
     }
 }

@@ -10,3 +10,9 @@
 local.properties
 /app/release/
 /.claude
+
+# Firebase config — web API key is not a secret per Google docs (security is in firestore.rules),
+# but we keep this out of the repo for hygiene. Devs pull it from the Firebase console.
+/app/google-services.json
+# Generated schema JSONs are checked in, but local Room exports during build go here:
+/app/schemas/*.tmp

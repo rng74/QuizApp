@@ -229,11 +229,11 @@ private fun OnboardingArtBlur() {
                 .clip(RoundedCornerShape(QuizRadii.card))
                 .drawBehind {
                     drawRect(
-                        color = Color(0xFF8A4A2A),
+                        color = QuizColors.onboardingPosterBody,
                     )
                     val mid = size.width / 2f
                     drawRect(
-                        color = Color(0xFF3A2A1D),
+                        color = QuizColors.onboardingPosterTitle,
                         size = Size(mid, size.height),
                     )
                     drawLine(

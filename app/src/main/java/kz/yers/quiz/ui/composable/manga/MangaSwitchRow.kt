@@ -96,7 +96,7 @@ fun MangaSwitch(
             modifier
                 .size(width = 48.dp, height = 28.dp)
                 .clip(trackShape)
-                .background(if (checked) tint else Color(0xFFDDDDDD))
+                .background(if (checked) tint else QuizColors.switchOffTrack)
                 .border(QuizStrokes.regular, QuizColors.ink, trackShape)
                 .mangaClickable(press) { onCheckedChange(!checked) },
     ) {

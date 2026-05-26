@@ -18,6 +18,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import kz.yers.quiz.BuildConfig
 import kz.yers.quiz.model.A11yState
 import kz.yers.quiz.ui.composable.manga.MangaButton
@@ -63,6 +68,38 @@ fun SettingsScreen(
     a11y: A11yState,
     actions: SettingsActions,
 ) {
+    // Both destructive actions surface a confirm before firing the action — a stray
+    // tap on "Сбросить рекорд" or "Показать обучение снова" would otherwise blow
+    // away progress the player can't recover.
+    var showResetDialog by remember { mutableStateOf(false) }
+    var showReplayDialog by remember { mutableStateOf(false) }
+    val onAskReset = { showResetDialog = true }
+    val onAskReplay = { showReplayDialog = true }
+
+    if (showResetDialog) {
+        ConfirmDialog(
+            title = "Сбросить рекорд?",
+            body = "Текущий лучший счёт обнулится. Это нельзя отменить.",
+            confirmLabel = "СБРОСИТЬ",
+            onConfirm = {
+                showResetDialog = false
+                actions.onResetHighScore()
+            },
+            onDismiss = { showResetDialog = false },
+        )
+    }
+    if (showReplayDialog) {
+        ConfirmDialog(
+            title = "Показать обучение снова?",
+            body = "При следующем запуске покажем 3 экрана с правилами.",
+            confirmLabel = "ПОКАЗАТЬ",
+            onConfirm = {
+                showReplayDialog = false
+                actions.onReplayTutorial()
+            },
+            onDismiss = { showReplayDialog = false },
+        )
+    }
     LazyColumn(
         modifier =
             Modifier
@@ -129,7 +166,7 @@ fun SettingsScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .mangaClickable(replayPress, onClick = actions.onReplayTutorial)
+                                .mangaClickable(replayPress, onClick = onAskReplay)
                                 .mangaPressNudge(replayPress)
                                 .padding(vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -164,7 +201,7 @@ fun SettingsScreen(
                     MangaButton(
                         label = "СБРОСИТЬ РЕКОРД",
                         variant = MangaButtonVariant.Ghost,
-                        onClick = actions.onResetHighScore,
+                        onClick = onAskReset,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -217,6 +254,60 @@ private fun Divider() {
                 .height(1.dp)
                 .background(QuizColors.ink.copy(alpha = 0.12f)),
     )
+}
+
+/** Minimal manga-styled confirm dialog. Reuses MangaPanel + MangaButton — no material3 AlertDialog. */
+@Composable
+private fun ConfirmDialog(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        MangaPanel(
+            modifier = Modifier.fillMaxWidth(),
+            shadowOffset = QuizShadows.medium,
+            contentPadding = 18.dp,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = title,
+                    fontFamily = RussoOneFamily,
+                    fontSize = 18.sp,
+                    letterSpacing = 1.sp,
+                    color = QuizColors.ink,
+                )
+                val scale = bodyScale()
+                Text(
+                    text = body,
+                    fontFamily = bodyFontFamily(),
+                    fontSize = (14f * scale).sp,
+                    lineHeight = (19f * scale).sp,
+                    color = QuizColors.ink.copy(alpha = 0.8f),
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MangaButton(
+                        label = "ОТМЕНА",
+                        variant = MangaButtonVariant.Ghost,
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MangaButton(
+                        label = confirmLabel,
+                        variant = MangaButtonVariant.Tint,
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

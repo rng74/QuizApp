@@ -72,18 +72,26 @@ class LeaderboardRepository(
             )
         }.getOrElse { LeaderboardUiState.Offline }
 
-    /** Upsert the player's best score. Monotonic: only writes when [score] beats the stored one. */
+    /** Upsert the player's best score. Monotonic: only writes when [score] beats the stored one.
+     *
+     *  Scores ≤ 0 never write — a brand-new player whose first run timed out at 0
+     *  should not appear on the global board with 0 points (the original `?: -1L`
+     *  default for a missing doc would let `0 > -1` pass through). The caller in
+     *  QuizAppViewModel.finishRun() also gates on `finalScore > 0`; this is the
+     *  belt-and-suspenders inside the repo.
+     */
     suspend fun submitScore(
         name: String,
         score: Int,
         modeLabel: String,
     ) {
+        if (score <= 0) return
         runCatching {
             val uid = ensureUid()
             val ref = col.document(uid)
             await(
                 db.runTransaction { txn ->
-                    val current = txn.get(ref).getLong("score") ?: -1L
+                    val current = txn.get(ref).getLong("score") ?: 0L
                     if (score.toLong() > current) {
                         txn.set(
                             ref,

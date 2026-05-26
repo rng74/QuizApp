@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kz.yers.quiz.model.AddFriendResult
@@ -275,11 +276,15 @@ private fun FriendRow(
                     fontFamily = RussoOneFamily,
                     fontSize = 15.sp,
                     color = QuizColors.ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = comparisonLabel(friend.bestScore, myBestScore),
                     fontSize = 12.sp,
                     color = QuizColors.ink.copy(alpha = 0.65f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Box(
@@ -293,7 +298,8 @@ private fun FriendRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = MangaIcons.Back,
+                    // Back glyph was semantically wrong for "remove"; Close (×) reads as delete.
+                    imageVector = MangaIcons.Close,
                     contentDescription = "Удалить друга",
                     tint = QuizColors.ink,
                     modifier = Modifier.size(16.dp),

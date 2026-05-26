@@ -53,6 +53,7 @@ import kz.yers.quiz.ui.theme.QuizColors
 import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
+import kz.yers.quiz.utils.formatCoins
 
 private enum class Tab { HOME, DAILY, DUEL, TOP, PROFILE }
 
@@ -213,9 +214,20 @@ private fun RootTopBar(
                 ),
         )
         if (!isLeaderboard) {
-            IconBtn(icon = MangaIcons.Bell, badge = notifCount, onClick = onOpenNotifications)
+            IconBtn(
+                icon = MangaIcons.Bell,
+                badge = notifCount,
+                contentDescription =
+                    if (notifCount > 0) "Уведомления: $notifCount непрочитанных" else "Уведомления",
+                onClick = onOpenNotifications,
+            )
         }
-        IconBtn(icon = MangaIcons.Settings, badge = 0, onClick = onOpenSettings)
+        IconBtn(
+            icon = MangaIcons.Settings,
+            badge = 0,
+            contentDescription = "Настройки",
+            onClick = onOpenSettings,
+        )
     }
 }
 
@@ -254,7 +266,12 @@ private fun PushedTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        IconBtn(icon = MangaIcons.Back, badge = 0, onClick = onBack)
+        IconBtn(
+            icon = MangaIcons.Back,
+            badge = 0,
+            contentDescription = "Назад",
+            onClick = onBack,
+        )
         Text(
             text = title,
             modifier = Modifier.weight(1f),
@@ -263,7 +280,7 @@ private fun PushedTopBar(
             letterSpacing = 1.sp,
             color = QuizColors.ink,
         )
-        Spacer(Modifier.size(46.dp))
+        Spacer(Modifier.size(48.dp))
     }
 }
 
@@ -274,37 +291,46 @@ private fun CoinsPill(
 ) {
     val shape = RoundedCornerShape(QuizRadii.pill)
     val press = rememberMangaPressState()
-    Box(
-        modifier =
-            Modifier
-                .padding(end = QuizStrokes.regular, bottom = QuizStrokes.regular)
-                .mangaPressShadow(
-                    state = press,
-                    restingShadow = QuizStrokes.regular,
-                    cornerRadius = QuizRadii.pill,
-                    pressedShadow = 0.dp,
+    // Outer 48dp container ensures the hit target meets WCAG 2.5.5 even though
+    // the visible pill stays at 36dp tall for the chrome density we want.
+    Box(modifier = Modifier.heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier =
+                Modifier
+                    .padding(end = QuizStrokes.regular, bottom = QuizStrokes.regular)
+                    .mangaPressShadow(
+                        state = press,
+                        restingShadow = QuizStrokes.regular,
+                        cornerRadius = QuizRadii.pill,
+                        pressedShadow = 0.dp,
+                    )
+                    .height(36.dp)
+                    .clip(shape)
+                    .background(Brush.linearGradient(listOf(QuizColors.coinLight, QuizColors.coinDeep)))
+                    .border(QuizStrokes.regular, QuizColors.ink, shape)
+                    .mangaClickable(press, onClick = onClick)
+                    .padding(horizontal = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    imageVector = MangaIcons.Coin,
+                    // Whole pill is the affordance — the icon is decorative; the Text
+                    // below carries the readable label for screen readers.
+                    contentDescription = null,
+                    tint = QuizColors.ink,
+                    modifier = Modifier.size(18.dp),
                 )
-                .height(36.dp)
-                .clip(shape)
-                .background(Brush.linearGradient(listOf(QuizColors.coinLight, QuizColors.coinDeep)))
-                .border(QuizStrokes.regular, QuizColors.ink, shape)
-                .mangaClickable(press, onClick = onClick)
-                .padding(horizontal = 10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(
-                imageVector = MangaIcons.Coin,
-                contentDescription = null,
-                tint = QuizColors.ink,
-                modifier = Modifier.size(18.dp),
-            )
-            Text(
-                text = coins.toString(),
-                fontFamily = RussoOneFamily,
-                fontSize = 13.sp,
-                color = QuizColors.ink,
-            )
+                Text(
+                    text = formatCoins(coins),
+                    fontFamily = RussoOneFamily,
+                    fontSize = 13.sp,
+                    color = QuizColors.ink,
+                )
+            }
         }
     }
 }
@@ -313,11 +339,13 @@ private fun CoinsPill(
 private fun IconBtn(
     icon: ImageVector,
     badge: Int,
+    contentDescription: String,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(QuizRadii.button)
     val press = rememberMangaPressState()
-    Box(modifier = Modifier.size(46.dp), contentAlignment = Alignment.Center) {
+    // 48dp hit-rect with a 40dp visual to satisfy WCAG 2.5.5 without redesigning chrome.
+    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
         Box(
             modifier =
                 Modifier
@@ -337,7 +365,7 @@ private fun IconBtn(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = contentDescription,
                 tint = QuizColors.ink,
                 modifier = Modifier.size(22.dp),
             )

@@ -14,6 +14,7 @@ import kz.yers.quiz.MainActivity
 import kz.yers.quiz.R
 import kz.yers.quiz.data.local.dao.NotificationDao
 import kz.yers.quiz.data.local.entity.NotificationEntity
+import kz.yers.quiz.model.NotificationDestination
 
 /**
  * Single entry point for notifications: writes the in-app inbox row (Room) and,
@@ -65,14 +66,14 @@ class NotificationRepository(
                 NotificationType.DAILY_REMINDER,
                 NotificationType.STREAK_AT_RISK,
                 NotificationType.DAILY_DONE,
-                -> MainActivity.DEST_DAILY
+                -> NotificationDestination.DAILY
 
-                else -> MainActivity.DEST_NOTIFICATIONS
+                else -> NotificationDestination.INBOX
             }
         val tapIntent =
             Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra(MainActivity.EXTRA_DESTINATION, destination)
+                putExtra(NotificationDestination.EXTRA_KEY, destination.asExtra())
             }
         val pending =
             PendingIntent.getActivity(

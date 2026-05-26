@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import kz.yers.quiz.model.NotificationDestination
 import kz.yers.quiz.navigation.AppNavHost
 import kz.yers.quiz.ui.theme.QuizAppTheme
 import kz.yers.quiz.ui.theme.QuizColors
@@ -70,18 +71,15 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    /** Honors a notification tap: jump to the inbox or the daily challenge. */
+    /** Honors a notification tap: jump to the inbox or the daily challenge.
+     *  Unknown / missing values are silently ignored — see [NotificationDestination.parse]. */
     private fun routeFromIntent(intent: Intent?) {
-        when (intent?.getStringExtra(EXTRA_DESTINATION)) {
-            DEST_NOTIFICATIONS -> viewModel.openNotifications()
-            DEST_DAILY -> viewModel.openDaily()
+        val raw = intent?.getStringExtra(NotificationDestination.EXTRA_KEY)
+        when (NotificationDestination.parse(raw)) {
+            NotificationDestination.INBOX -> viewModel.openNotifications()
+            NotificationDestination.DAILY -> viewModel.openDaily()
+            null -> Unit
         }
-    }
-
-    companion object {
-        const val EXTRA_DESTINATION = "destination"
-        const val DEST_NOTIFICATIONS = "notifications"
-        const val DEST_DAILY = "daily"
     }
 }
 

@@ -264,7 +264,33 @@ fun AppNavHost(
                 )
             }
             composable(Routes.NOTIFICATIONS) {
-                NotificationInboxScreen(notifications = viewModel.notificationsList.value)
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                // Android 13+ runtime permission. We probe at every screen entry
+                // (cheap) so toggling system settings outside the app reflects
+                // back instantly on return.
+                val denied =
+                    android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            ctx,
+                            android.Manifest.permission.POST_NOTIFICATIONS,
+                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                NotificationInboxScreen(
+                    notifications = viewModel.notificationsList.value,
+                    showPermissionBanner = denied,
+                    onOpenSystemSettings = {
+                        val intent =
+                            android.content.Intent(
+                                android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS,
+                            ).apply {
+                                putExtra(
+                                    android.provider.Settings.EXTRA_APP_PACKAGE,
+                                    ctx.packageName,
+                                )
+                                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                        runCatching { ctx.startActivity(intent) }
+                    },
+                )
             }
             composable(Routes.SHOP) {
                 HintShopScreen(

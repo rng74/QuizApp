@@ -34,7 +34,7 @@ fun MangaChip(
         when (variant) {
             MangaChipVariant.Default -> Color.White to QuizColors.ink
             MangaChipVariant.Tint -> tint to QuizColors.ink
-            MangaChipVariant.Red -> Color(0xFFFF726D) to Color.White
+            MangaChipVariant.Red -> QuizColors.chipRedBg to Color.White
             MangaChipVariant.Blue -> QuizColors.accentBlue to Color.White
             MangaChipVariant.Ink -> QuizColors.ink to Color.White
         }

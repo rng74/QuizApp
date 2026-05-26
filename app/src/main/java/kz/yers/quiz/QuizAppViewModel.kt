@@ -12,6 +12,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kz.yers.quiz.data.local.dao.DailyAttemptDao
 import kz.yers.quiz.data.local.dao.FriendDao
@@ -113,6 +115,12 @@ class QuizAppViewModel(
     val totalQuestionsInRun = mutableIntStateOf(30)
 
     val coins = mutableIntStateOf(240)
+
+    // Serializes every read-modify-write on the coin balance. Without this, a hint
+    // purchase (buyHintWithCoins) can interleave with the run-end coin award in
+    // finishRun() — both read the same `current`, both write back, and one update
+    // gets dropped. All coin mutations MUST go through mutateCoins().
+    private val coinsMutex = Mutex()
     val streakDays = mutableIntStateOf(0)
     val bestScoreByMode = mutableStateOf<Map<GameMode, Int>>(emptyMap())
     val recordModeJustSet = mutableStateOf<GameMode?>(null)
@@ -355,12 +363,30 @@ class QuizAppViewModel(
     /** Spend coins on a hint. No-op if the player can't afford it. */
     fun buyHintWithCoins(type: HintType) {
         val price = type.coinPrice
-        if (coins.intValue < price) return
-        val newTotal = coins.intValue - price
-        coins.intValue = newTotal
-        viewModelScope.launch { userPrefs.setCoins(newTotal) }
-        persistHintInventory(hintInventory.value.withIncrement(type))
+        viewModelScope.launch {
+            val ok = mutateCoins { it - price }
+            if (ok) persistHintInventory(hintInventory.value.withIncrement(type))
+        }
     }
+
+    /**
+     * Single atomic point of mutation for the coin balance. Reads the canonical
+     * value from [UserPrefs] (not the in-memory mirror — that can lag a write),
+     * applies [delta], persists it, and refreshes the mirror — all under
+     * [coinsMutex] so concurrent callers serialize.
+     *
+     * Returns false (and writes nothing) when [delta] would push the balance
+     * below zero — callers can use this to surface "insufficient funds".
+     */
+    private suspend fun mutateCoins(delta: (Int) -> Int): Boolean =
+        coinsMutex.withLock {
+            val current = userPrefs.coins.first()
+            val next = delta(current)
+            if (next < 0) return@withLock false
+            userPrefs.setCoins(next)
+            coins.intValue = next
+            true
+        }
 
     fun setSoundEnabled(value: Boolean) {
         soundEnabled.value = value
@@ -413,6 +439,10 @@ class QuizAppViewModel(
     }
 
     fun backToMenu() {
+        // Any non-duel return to menu must also drop the Firestore snapshot listener;
+        // otherwise the duel observer keeps streaming after the screen is gone and
+        // burns quota / leaks across the next duel session. See stopDuelObserver().
+        stopDuelObserver()
         appState.value = AppState.Menu
         viewModelScope.launch { refreshMenuStats() }
     }
@@ -420,10 +450,15 @@ class QuizAppViewModel(
     fun openDuelSetup() {
         isDuelRun = false
         duelResultNotified = false
-        duelListenerJob?.cancel()
-        duelListenerJob = null
+        stopDuelObserver()
         duelState.value = DuelState()
         appState.value = AppState.DuelSetup
+    }
+
+    /** Single point for tearing down the Firestore duel snapshot listener. */
+    private fun stopDuelObserver() {
+        duelListenerJob?.cancel()
+        duelListenerJob = null
     }
 
     /** Host: allocate a unique code and open the lobby. Stays on setup with an error if offline. */
@@ -581,8 +616,7 @@ class QuizAppViewModel(
 
     fun exitDuel() {
         isDuelRun = false
-        duelListenerJob?.cancel()
-        duelListenerJob = null
+        stopDuelObserver()
         duelState.value = DuelState()
         score.intValue = 0
         userAnswer.value = null
@@ -883,9 +917,7 @@ class QuizAppViewModel(
                 val streakBonus = updateStreak()
                 val earned = finalScore / COINS_PER_SCORE + streakBonus
                 if (earned > 0) {
-                    val newTotal = userPrefs.coins.first() + earned
-                    userPrefs.setCoins(newTotal)
-                    coins.intValue = newTotal
+                    mutateCoins { it + earned }
                 }
                 lastRunCoins.intValue = earned
                 emitRunNotifications(
@@ -894,13 +926,15 @@ class QuizAppViewModel(
                     isDaily = isDaily,
                     streakBonusEarned = streakBonus > 0,
                 )
-                if (!isDaily) {
+                if (!isDaily && finalScore > 0) {
+                    // Don't poison the global leaderboard with brand-new-player 0-scores —
+                    // a player who never answered correctly should not appear at all.
                     leaderboard.submitScore(
                         name = userPrefs.userName.first(),
                         score = finalScore,
                         modeLabel = mode.shortLabel,
                     )
-                } else {
+                } else if (isDaily) {
                     dailyStats.submitAttempt(
                         epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
                         score = finalScore,

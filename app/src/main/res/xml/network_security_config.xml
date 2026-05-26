@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Disallow cleartext traffic app-wide. Every endpoint we hit is HTTPS:
+      - Firestore / Firebase Auth / Crashlytics / Analytics
+      - AdMob (play-services-ads)
+      - anison.fm (audio assets are served over HTTPS)
+    If a future endpoint needs HTTP, add a narrowly-scoped <domain-config> below.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

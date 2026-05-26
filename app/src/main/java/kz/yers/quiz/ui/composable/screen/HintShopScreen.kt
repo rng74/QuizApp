@@ -37,6 +37,7 @@ import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
+import kz.yers.quiz.utils.formatCoins
 
 private data class HintMeta(
     val type: HintType,
@@ -127,7 +128,7 @@ private fun BalanceCard(coins: Int) {
                     color = QuizColors.ink.copy(alpha = 0.6f),
                 )
                 Text(
-                    text = "$coins монет",
+                    text = "${formatCoins(coins)} монет",
                     fontFamily = RussoOneFamily,
                     fontSize = 22.sp,
                     color = QuizColors.ink,

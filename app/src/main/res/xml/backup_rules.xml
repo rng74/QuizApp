@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Legacy Auto Backup rules for Android 6–11 (API 23–30). Android 12+ uses
+    data_extraction_rules.xml instead.
+    Mirror the same exclusions: Firebase anon auth state + the Room db.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="com.google.firebase.auth.api.Store.AnonymousUser" />
+    <exclude domain="database" path="quiz.db" />
+</full-backup-content>
