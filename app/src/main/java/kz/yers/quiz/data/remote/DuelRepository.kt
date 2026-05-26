@@ -2,6 +2,7 @@ package kz.yers.quiz.data.remote
 
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
@@ -110,11 +111,22 @@ class DuelRepository(
                 }
             }
             error("could not allocate a unique duel code")
-        }.getOrElse {
+        }.getOrElse { throwable ->
+            // The "Offline" result is a catch-all — the actual cause is usually
+            // ONE of: (a) genuine no-network, (b) Firebase Anonymous Auth not
+            // enabled in the console, (c) Firestore database not provisioned,
+            // (d) firestore.rules denying the create. Surface the real exception
+            // to Crashlytics so the dashboard tells us which it is instead of
+            // every failure looking the same.
+            FirebaseCrashlytics.getInstance().apply {
+                log("DuelRepository.create failed: ${throwable.javaClass.simpleName}")
+                recordException(throwable)
+            }
             analytics.log(
                 Events.DUEL_CREATE,
                 Params.RESULT to "offline",
-                Params.ERROR_MESSAGE to (it.message ?: "unknown"),
+                Params.ERROR_KIND to throwable.javaClass.simpleName,
+                Params.ERROR_MESSAGE to (throwable.message ?: "unknown"),
             )
             DuelCreateResult.Offline
         }
@@ -124,6 +136,7 @@ class DuelRepository(
         code: String,
         myName: String,
     ): DuelJoinResult {
+        var capturedError: Throwable? = null
         val result =
             runCatching {
                 val uid = ensureUid()
@@ -154,7 +167,16 @@ class DuelRepository(
                         }
                     },
                 )
-            }.getOrElse { DuelJoinResult.Offline }
+            }.getOrElse {
+                capturedError = it
+                DuelJoinResult.Offline
+            }
+        if (capturedError != null && result is DuelJoinResult.Offline) {
+            FirebaseCrashlytics.getInstance().apply {
+                log("DuelRepository.join failed: ${capturedError!!.javaClass.simpleName}")
+                recordException(capturedError!!)
+            }
+        }
         analytics.log(
             Events.DUEL_JOIN,
             Params.RESULT to
@@ -165,6 +187,8 @@ class DuelRepository(
                     DuelJoinResult.Offline -> "offline"
                 },
             Params.DUEL_ROLE to "GUEST",
+            Params.ERROR_KIND to (capturedError?.javaClass?.simpleName ?: ""),
+            Params.ERROR_MESSAGE to (capturedError?.message ?: ""),
         )
         return result
     }
