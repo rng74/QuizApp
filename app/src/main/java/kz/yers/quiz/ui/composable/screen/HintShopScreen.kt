@@ -81,11 +81,6 @@ fun HintShopScreen(
                 onWatchAd = { onWatchAd(meta.type) },
             )
         }
-        Text(
-            text = "Реклама — тестовая (AdMob sample). Перед релизом подставьте свой ad-unit.",
-            fontSize = 11.sp,
-            color = QuizColors.ink.copy(alpha = 0.5f),
-        )
     }
 
     RewardedAdEffect(
