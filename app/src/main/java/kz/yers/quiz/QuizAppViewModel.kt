@@ -143,6 +143,17 @@ class QuizAppViewModel(
     val lastRunTotal = mutableIntStateOf(0)
     private var skipRequested = false
 
+    // Lives: a miss (wrong or timeout) costs one; the run ends at zero. The daily plays all of
+    // its tracks regardless, so it has no lives.
+    val lives = mutableIntStateOf(MAX_LIVES)
+    val livesEnabled: Boolean get() = !isDailyRun
+
+    /** "Out of lives — watch an ad for one more?" is on screen (once per solo run). */
+    val reviveOffered = mutableStateOf(false)
+    val reviveAdPending = mutableStateOf(false)
+    private var revivedThisRun = false
+    private var runCorrect = 0
+
     val notificationsList = mutableStateOf<List<NotificationEntity>>(emptyList())
     val unreadCount = mutableIntStateOf(0)
     private var duelResultNotified = false
@@ -202,16 +213,31 @@ class QuizAppViewModel(
 
     val leaderboardState = mutableStateOf<LeaderboardUiState>(LeaderboardUiState.Loading)
 
+    /** Each mode has its own board, so an Easy run never outranks a Hardcore one. */
+    val leaderboardMode = mutableStateOf(GameMode.NORMAL)
+
     fun openLeaderboard() {
         appState.value = AppState.Leaderboard
+        activeMode.value?.let { leaderboardMode.value = it }
         loadLeaderboard()
     }
 
+    fun selectLeaderboardMode(mode: GameMode) {
+        if (mode == leaderboardMode.value && leaderboardState.value !is LeaderboardUiState.Offline) return
+        leaderboardMode.value = mode
+        loadLeaderboard()
+    }
+
+    private var leaderboardJob: Job? = null
+
     fun loadLeaderboard() {
         leaderboardState.value = LeaderboardUiState.Loading
-        viewModelScope.launch {
-            leaderboardState.value = leaderboard.load()
-        }
+        val mode = leaderboardMode.value
+        leaderboardJob?.cancel()
+        leaderboardJob =
+            viewModelScope.launch {
+                leaderboardState.value = leaderboard.load(mode)
+            }
     }
 
     val hintsAvailableForCurrentRun: Boolean
@@ -658,11 +684,7 @@ class QuizAppViewModel(
         isDuelRun = true
         isDailyRun = false
         activeMode.value = GameMode.NORMAL
-        score.intValue = 0
-        userAnswer.value = null
-        questionHintState.value = QuestionHintState()
-        timeRemaining.longValue = maxTimePerQuestion
-        skipRequested = false
+        resetRunState()
         appState.value = AppState.Loading
         analytics.log(
             Events.DUEL_ROUND_STARTED,
@@ -696,8 +718,7 @@ class QuizAppViewModel(
         isDuelRun = false
         stopDuelObserver()
         duelState.value = DuelState()
-        score.intValue = 0
-        userAnswer.value = null
+        resetRunState()
         quizQuestions = emptyList()
         appState.value = AppState.Menu
     }
@@ -722,7 +743,8 @@ class QuizAppViewModel(
                     attempt?.let {
                         DailyAttemptSummary(
                             score = it.score,
-                            correct = it.correct,
+                            correctCount = it.correctCount,
+                            totalTracks = it.totalTracks,
                             durationMs = it.durationMs,
                         )
                     },
@@ -801,13 +823,9 @@ class QuizAppViewModel(
         // Per-run reset — necessary for the "Play again" flow which calls startQuiz directly
         // from ResultScreen without going through resetQuiz. Idempotent for the menu flow
         // (resetQuiz already cleared these on the way out).
-        score.intValue = 0
-        userAnswer.value = null
+        resetRunState()
         isNewRecord.value = false
         recordModeJustSet.value = null
-        questionHintState.value = QuestionHintState()
-        timeRemaining.longValue = maxTimePerQuestion
-        skipRequested = false
         analytics.log(Events.QUIZ_STARTED, Params.MODE to gameMode.name)
         loadQuizQuestions(gameMode)
     }
@@ -821,28 +839,27 @@ class QuizAppViewModel(
             if (attempt != null) return@launch
             tries += 1
             isDailyRun = true
-            questionHintState.value = QuestionHintState()
-            timeRemaining.longValue = maxTimePerQuestion
-            skipRequested = false
+            isNewRecord.value = false
+            resetRunState()
             activeMode.value = GameMode.NORMAL
             runStartElapsedMs = SystemClock.elapsedRealtime()
             appState.value = AppState.Loading
-            val question =
+            val questions =
                 withContext(Dispatchers.IO) {
-                    repository.getDailyQuestion(LocalDate.now(ZoneId.systemDefault()).toEpochDay())
+                    repository.getDailyQuestions(LocalDate.now(ZoneId.systemDefault()).toEpochDay())
                 }
-            if (question == null) {
+            if (questions.isEmpty()) {
                 appState.value = AppState.Daily
                 return@launch
             }
-            quizQuestions = listOf(question)
-            totalQuestionsInRun.intValue = 1
+            quizQuestions = questions
+            totalQuestionsInRun.intValue = questions.size
             analytics.log(
                 Events.DAILY_STARTED,
                 Params.STREAK_DAYS to streakDays.intValue,
             )
             appState.value =
-                AppState.Quiz(currentQuestion = question, currentQuestionIndex = 0)
+                AppState.Quiz(currentQuestion = questions[0], currentQuestionIndex = 0)
         }
     }
 
@@ -916,6 +933,7 @@ class QuizAppViewModel(
         // and let the "results" button (moveToNextQuestion) finish the run as a miss.
         if (appState.value !is AppState.Quiz || userAnswer.value != null) return
         userAnswer.value = TIMED_OUT
+        if (livesEnabled) lives.intValue = (lives.intValue - 1).coerceAtLeast(0)
         analytics.log(
             Events.QUIZ_ANSWERED,
             Params.MODE to mode(),
@@ -944,6 +962,9 @@ class QuizAppViewModel(
             val basePoints = (timeRemainingMs / 1000L).toInt()
             val multiplier = if (isDailyRun) 2 else 1
             score.intValue += basePoints * multiplier
+            runCorrect += 1
+        } else if (livesEnabled) {
+            lives.intValue = (lives.intValue - 1).coerceAtLeast(0)
         }
         analytics.log(
             Events.QUIZ_ANSWERED,
@@ -969,12 +990,49 @@ class QuizAppViewModel(
         }
         val skipping = skipRequested
         skipRequested = false
-        val correct = userAnswer.value == state.currentQuestion.correctAnswer.titleRu
-        val advance = skipping || correct
-        if (!advance) {
+        val missed = !skipping && userAnswer.value != state.currentQuestion.correctAnswer.titleRu
+        if (missed && livesEnabled && lives.intValue <= 0) {
+            val hasNextQuestion = state.currentQuestionIndex < quizQuestions.size - 1
+            if (!isDuelRun && !revivedThisRun && hasNextQuestion) {
+                reviveOffered.value = true
+                analytics.log(Events.REVIVE_OFFERED, Params.MODE to mode())
+            } else {
+                finishRun()
+            }
+            return
+        }
+        advanceOrFinish(state)
+    }
+
+    /** Out of lives: the player chose to watch a rewarded ad for one more life. */
+    fun acceptRevive() {
+        if (!reviveOffered.value) return
+        reviveOffered.value = false
+        reviveAdPending.value = true
+    }
+
+    fun declineRevive() {
+        if (!reviveOffered.value) return
+        reviveOffered.value = false
+        finishRun()
+    }
+
+    /** Result of the revive rewarded ad: +1 life and continue, or end the run. */
+    fun onReviveAdResult(earned: Boolean) {
+        if (!reviveAdPending.value) return
+        reviveAdPending.value = false
+        val state = appState.value as? AppState.Quiz
+        if (!earned || state == null) {
             finishRun()
             return
         }
+        revivedThisRun = true
+        lives.intValue = 1
+        analytics.log(Events.REVIVE_USED, Params.MODE to mode())
+        advanceOrFinish(state)
+    }
+
+    private fun advanceOrFinish(state: AppState.Quiz) {
         if (state.currentQuestionIndex < quizQuestions.size - 1) {
             appState.value =
                 AppState.Quiz(
@@ -998,31 +1056,25 @@ class QuizAppViewModel(
             return
         }
         val previousBest = repository.getHighScore()
-        isNewRecord.value = finalScore > previousBest
+        // The high score is a solo-mode record; daily runs (2× points) don't count toward it.
+        isNewRecord.value = !isDailyRun && finalScore > previousBest
         // Persist here, not on the way back to the menu: "Play again" goes straight to
         // startQuiz() and would otherwise drop the record.
-        if (!isDailyRun && isNewRecord.value) {
+        if (isNewRecord.value) {
             repository.setHighScore(finalScore)
             _highScore.intValue = finalScore
         }
-        val currentIndexForAnalytics =
-            (appState.value as? AppState.Quiz)?.currentQuestionIndex ?: 0
-        val correctForAnalytics =
-            (appState.value as? AppState.Quiz)?.let { state ->
-                userAnswer.value == state.currentQuestion.correctAnswer.titleRu
-            } ?: false
-        val endedVia =
-            when {
-                userAnswer.value == null || userAnswer.value == TIMED_OUT -> "timeout"
-                !correctForAnalytics -> "wrong"
-                currentIndexForAnalytics >= totalQuestionsInRun.intValue - 1 -> "complete"
-                else -> "advance" // shouldn't reach finishRun on advance; here for safety
-            }
+        val answeredIndex = (appState.value as? AppState.Quiz)?.currentQuestionIndex ?: 0
+        val total = totalQuestionsInRun.intValue
+        val outOfLives = livesEnabled && lives.intValue <= 0
+        val completed = !outOfLives && answeredIndex >= total - 1
+        val endedVia = if (outOfLives) "out_of_lives" else "complete"
         analytics.log(
             Events.QUIZ_FINISHED,
             Params.MODE to mode(),
             Params.SCORE to finalScore,
-            Params.QUESTION_INDEX to currentIndexForAnalytics,
+            Params.QUESTION_INDEX to answeredIndex,
+            Params.CORRECT_COUNT to runCorrect,
             Params.TOTAL_QUESTIONS to totalQuestionsInRun.intValue,
             Params.DURATION_MS to durationMs,
             Params.ENDED_VIA to endedVia,
@@ -1040,22 +1092,16 @@ class QuizAppViewModel(
             } else {
                 recordModeJustSet.value
             }
-        val currentQuestion =
-            (appState.value as? AppState.Quiz)?.currentQuestion
-                ?: quizQuestions.firstOrNull()
         val isDaily = isDailyRun
         resultWasDaily.value = isDaily
         if (!isDaily) ads.onRunFinished()
-        val correct =
-            currentQuestion != null && userAnswer.value == currentQuestion.correctAnswer.titleRu
-
-        val answeredIndex = (appState.value as? AppState.Quiz)?.currentQuestionIndex ?: 0
-        val total = totalQuestionsInRun.intValue
-        lastRunCorrect.intValue =
-            (if (correct) answeredIndex + 1 else answeredIndex).coerceIn(0, total)
+        val correctCount = runCorrect
+        lastRunCorrect.intValue = correctCount
         lastRunTotal.intValue = total
         // Questions the player actually faced (skips count as faced, not as correct).
         val answeredCount = (answeredIndex + 1).coerceAtMost(total)
+        val dailyTitles = if (isDaily) quizQuestions.joinToString(" · ") { it.correctAnswer.titleRu } else ""
+        val dailySolved = correctCount >= DAILY_SOLVED_MIN
 
         if (mode != null) {
             viewModelScope.launch {
@@ -1066,24 +1112,28 @@ class QuizAppViewModel(
                             score = finalScore,
                             durationMs = durationMs,
                             dateEpochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
-                            correct = lastRunCorrect.intValue,
+                            correct = correctCount,
                             answered = answeredCount,
                         ),
                     )
-                    if (isDaily && currentQuestion != null) {
+                    if (isDaily) {
                         dailyAttemptDao.insert(
                             DailyAttemptEntity(
                                 epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
                                 score = finalScore,
                                 durationMs = durationMs,
-                                correct = correct,
-                                trackTitle = currentQuestion.correctAnswer.titleRu,
+                                correct = dailySolved,
+                                trackTitle = dailyTitles,
+                                correctCount = correctCount,
+                                totalTracks = total,
                             ),
                         )
                     }
                 }
                 val streakBonus = updateStreak()
-                val earned = finalScore / COINS_PER_SCORE + streakBonus
+                val perCorrect = if (isDaily) DAILY_COINS_PER_CORRECT else COINS_PER_CORRECT
+                val completionBonus = if (!isDaily && completed) RUN_COMPLETE_BONUS else 0
+                val earned = correctCount * perCorrect + completionBonus + streakBonus
                 if (earned > 0) {
                     mutateCoins { it + earned }
                     analytics.log(
@@ -1111,13 +1161,13 @@ class QuizAppViewModel(
                     leaderboard.submitScore(
                         name = userPrefs.userName.first(),
                         score = finalScore,
-                        modeLabel = mode.shortLabel,
+                        mode = mode,
                     )
                 } else if (isDaily) {
                     dailyStats.submitAttempt(
                         epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
                         score = finalScore,
-                        correct = correct,
+                        correct = dailySolved,
                     )
                 }
             }
@@ -1184,15 +1234,10 @@ class QuizAppViewModel(
             Params.QUESTION_INDEX to atIndex,
             Params.SCORE to score.intValue,
         )
-        stopTimer()
         isDailyRun = false
         isDuelRun = false
-        score.intValue = 0
-        userAnswer.value = null
+        resetRunState()
         isNewRecord.value = false
-        questionHintState.value = QuestionHintState()
-        timeRemaining.longValue = maxTimePerQuestion
-        skipRequested = false
         quizQuestions = emptyList()
         appState.value = AppState.Menu
         viewModelScope.launch { refreshMenuStats() }
@@ -1201,13 +1246,24 @@ class QuizAppViewModel(
     fun resetQuiz() {
         appState.value = AppState.Menu
         viewModelScope.launch { refreshMenuStats() }
-        userAnswer.value = null
-        score.intValue = 0
+        resetRunState()
         isNewRecord.value = false
         isDailyRun = false
+    }
+
+    /** Clears every per-run field. Called at each run start and on every way out of a run. */
+    private fun resetRunState() {
+        stopTimer()
+        score.intValue = 0
+        userAnswer.value = null
         questionHintState.value = QuestionHintState()
         timeRemaining.longValue = maxTimePerQuestion
         skipRequested = false
+        lives.intValue = MAX_LIVES
+        reviveOffered.value = false
+        reviveAdPending.value = false
+        revivedThisRun = false
+        runCorrect = 0
     }
 
     private fun finishDuelTurn(finalScore: Int) {
@@ -1235,7 +1291,13 @@ class QuizAppViewModel(
         /** Sentinel [userAnswer] for a question whose timer ran out. Matches no option. */
         const val TIMED_OUT = ""
         private const val XP_PER_LEVEL = 1000
-        private const val COINS_PER_SCORE = 5
+        const val MAX_LIVES = 3
+
+        // A daily counts as "solved" (shared stats) with at least this many of its tracks right.
+        const val DAILY_SOLVED_MIN = 3
+        private const val COINS_PER_CORRECT = 5
+        private const val DAILY_COINS_PER_CORRECT = 10
+        private const val RUN_COMPLETE_BONUS = 25
         private const val STREAK_BONUS_COINS = 50
         private const val STREAK_BONUS_EVERY = 7
     }

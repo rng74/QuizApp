@@ -161,6 +161,8 @@ fun AppNavHost(
             composable(Routes.LEADERBOARD) {
                 LeaderboardScreen(
                     state = viewModel.leaderboardState.value,
+                    selectedMode = viewModel.leaderboardMode.value,
+                    onSelectMode = viewModel::selectLeaderboardMode,
                     onRetry = viewModel::loadLeaderboard,
                 )
             }
@@ -191,6 +193,13 @@ fun AppNavHost(
                     hintInventory = hintInventory,
                     questionHintState = questionHintState,
                     pendingAdType = pendingAd,
+                    lives = if (viewModel.livesEnabled) viewModel.lives.intValue else null,
+                    maxLives = QuizAppViewModel.MAX_LIVES,
+                    reviveOffered = viewModel.reviveOffered.value,
+                    reviveAdPending = viewModel.reviveAdPending.value,
+                    onAcceptRevive = viewModel::acceptRevive,
+                    onDeclineRevive = viewModel::declineRevive,
+                    onReviveAdResult = viewModel::onReviveAdResult,
                     onAnswerSelected = viewModel::submitAnswer,
                     onNextQuestion = viewModel::moveToNextQuestion,
                     onPlaybackReady = viewModel::onPlaybackReady,

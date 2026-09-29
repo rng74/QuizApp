@@ -29,6 +29,29 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Anime Quiz — per-mode leaderboards (v6+). Same guarantees as the legacy board above:
+    // own doc only, bounded, monotonic. `mode` must be one of the GameMode enum names.
+    match /leaderboards/{mode}/scores/{uid} {
+      allow read: if request.auth != null
+        && mode in ['EASY', 'NORMAL', 'RANDOM', 'SHIT'];
+
+      allow create, update: if request.auth != null
+        && mode in ['EASY', 'NORMAL', 'RANDOM', 'SHIT']
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'score', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 24
+        && request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 100000
+        && (
+             !exists(/databases/$(database)/documents/leaderboards/$(mode)/scores/$(uid))
+             || request.resource.data.score >= resource.data.score
+           );
+
+      allow delete: if false;
+    }
+
     // Anime Quiz — Daily Challenge shared stats. One attempt doc per player per UTC day.
     // The track is deterministic client-side; these docs only aggregate how players did.
     match /daily/{day}/attempts/{uid} {

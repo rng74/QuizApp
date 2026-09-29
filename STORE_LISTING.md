@@ -54,7 +54,7 @@ plain text + simple line breaks; no markdown.
 • Хардкор — забытые треки и нишевые сезоны
 
 🔥 ДНЕВНОЙ ВЫЗОВ
-Один трек на всех — для каждого игрока в мире одинаковый. Двойные очки. Серия из подряд сыгранных дней — копи, не теряй.
+5 треков на всех — для каждого игрока в мире одинаковые. Двойные очки. Серия из подряд сыгранных дней — копи, не теряй.
 
 ⚔️ ДУЭЛЬ С ДРУГОМ
 Создаёшь дуэль — получаешь 6-символьный код. Делишься с другом — он подключается. Оба слушают один и тот же набор из 10 треков (без подсматривания), потом сравниваете счёт. Никаких аккаунтов и регистраций.
@@ -69,7 +69,10 @@ plain text + simple line breaks; no markdown.
 Покупаешь за монеты или смотришь короткую рекламу.
 
 🏆 МОНЕТЫ
-Зарабатываешь за каждый ответ. Бонус за каждые 7 дней серии. Тратишь на подсказки в магазине.
+Зарабатываешь за каждый верный ответ, плюс бонус за пройденный забег и за каждые 7 дней серии. Тратишь на подсказки в магазине.
+
+❤️ ТРИ ЖИЗНИ
+Ошибка или таймаут отнимают жизнь. После каждого ответа — название аниме и трека. Закончились жизни — можно продолжить за рекламу.
 
 🎌 СТИЛЬ
 Манга-дизайн: страницы в стиле комикса, рукописные шрифты, акценты «дон!». Не очередной плоский Material.
@@ -145,7 +148,7 @@ GAME MODES
 • Hardcore — obscure tracks and niche seasons
 
 DAILY CHALLENGE
-Same track for every player worldwide, every day. Double points. Streak
+Same 5 tracks for every player worldwide, every day. Double points. Streak
 counter rewards consecutive days.
 
 CODE-BASED DUEL
@@ -218,7 +221,7 @@ Recommended order (Play renders left-to-right; first 2 do most of the lifting).
 3. **Result screen** — `ResultScreen` with a perfect run, "+N МОНЕТ", share
    button. Caption: "Награды за каждый трек".
 4. **Daily challenge** — `DailyChallengeScreen` showing the countdown +
-   live stats (place / players / solved). Caption: "Один трек на всех".
+   live stats (place / players / solved). Caption: "5 треков на всех".
 5. **Duel setup** — `DuelSetupScreen` with the 6-character code generated +
    share sheet. Caption: "Дуэль по коду".
 6. **Leaderboard** — `LeaderboardScreen` top-30. Caption: "Глобальный рейтинг".

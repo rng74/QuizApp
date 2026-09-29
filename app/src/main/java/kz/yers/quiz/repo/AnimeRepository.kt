@@ -50,26 +50,20 @@ class AnimeRepository(
     }
 
     /**
-     * Deterministic single track for the Daily Challenge.
-     *
-     * The track for a given [epochDay] is identical on every device/run (no server needed) — the
-     * Firestore daily-stats model assumes one shared track per day. The pool is heuristically
-     * curated (recognizable openings, [DAILY_MIN_RATING]+), then put through a fixed-seed
-     * permutation so the order is non-sequential to players. Indexing that permutation by
-     * [epochDay] makes each anime recur exactly every `pool.size` days, so as long as the
-     * curated pool has at least [DAILY_NO_REPEAT_WINDOW] entries no anime can repeat within a
-     * 90-day window. Falls back to the broad distinct pool if curation yields too few.
+     * Deterministic [DAILY_TRACKS]-track set for the Daily Challenge — identical on every
+     * device/run (no server needed); the Firestore daily-stats model assumes one shared set per
+     * day. Selection and the 90-day no-repeat guarantee live in [pickDailyTitles].
      *
      * Caveat: the epochDay→track map is stable only while `info.json` and the curation predicate
      * are unchanged. A future content-pipeline regen would shift the schedule; clients on
      * different app versions could then see different daily tracks for the same day (already true
      * before this change, and acceptable).
      */
-    suspend fun getDailyQuestion(epochDay: Long): QuizQuestion? {
+    suspend fun getDailyQuestions(epochDay: Long): List<QuizQuestion> {
         if (animeList.isEmpty()) loadAnimeData()
-        val correct = pickDailyTitle(animeList, epochDay) ?: return null
-        val options = generateOptions(correct)
-        return QuizQuestion(correctAnswer = correct, options = options)
+        return pickDailyTitles(animeList, epochDay).map { correct ->
+            QuizQuestion(correctAnswer = correct, options = generateOptions(correct))
+        }
     }
 
     /**
@@ -196,24 +190,39 @@ class AnimeRepository(
     }
 }
 
+const val DAILY_TRACKS = 5
 private const val DAILY_MIN_RATING = 7.0f
 private const val DAILY_SHUFFLE_SEED = 0x5DA17_4D41L
 private const val DAILY_NO_REPEAT_WINDOW = 90
 
 /**
  * Pure daily picker (no I/O, no un-seeded randomness) so the 90-day no-repeat invariant is
- * unit-testable. Same [list] + [epochDay] always yields the same [AnimeInfo] on every device.
+ * unit-testable. Same [list] + [epochDay] always yields the same [DAILY_TRACKS] titles, in the
+ * same order, on every device.
  *
  * The pool is heuristically curated (recognizable openings, [DAILY_MIN_RATING]+), then put
- * through a fixed-seed permutation so the order is non-sequential. Indexing that permutation by
- * [epochDay] makes each anime recur exactly every `pool.size` days, so a curated pool of at
- * least [DAILY_NO_REPEAT_WINDOW] entries can never repeat an anime within a 90-day window.
- * Falls back to the broad distinct pool if curation yields too few.
+ * through a fixed-seed permutation so the order is non-sequential. Day `d` takes the block
+ * `[d·N, d·N + N)` of that permutation (wrapping), so each anime recurs exactly every
+ * `pool.size` blocks; a curated pool of at least [DAILY_NO_REPEAT_WINDOW]·N entries can never
+ * repeat an anime within a 90-day window. Falls back to the broad distinct pool otherwise.
  */
-internal fun pickDailyTitle(
+internal fun pickDailyTitles(
     list: List<AnimeInfo>,
     epochDay: Long,
-): AnimeInfo? {
+    count: Int = DAILY_TRACKS,
+): List<AnimeInfo> {
+    val pool = dailyPool(list, count)
+    if (pool.isEmpty()) return emptyList()
+    val size = pool.size.toLong()
+    return (0 until minOf(count, pool.size)).map { k ->
+        pool[((epochDay * count + k).mod(size)).toInt()]
+    }
+}
+
+private fun dailyPool(
+    list: List<AnimeInfo>,
+    count: Int,
+): List<AnimeInfo> {
     val curated =
         list
             .filter {
@@ -223,13 +232,9 @@ internal fun pickDailyTitle(
             }
             .distinctBy { it.titleRu }
             .sortedBy { it.titleRu }
-    val pool =
-        if (curated.size >= DAILY_NO_REPEAT_WINDOW) {
-            curated.shuffled(Random(DAILY_SHUFFLE_SEED))
-        } else {
-            list.filter { it.titleRu.isNotBlank() }.distinctBy { it.titleRu }
-        }
-    if (pool.isEmpty()) return null
-    val index = (epochDay.mod(pool.size.toLong())).toInt()
-    return pool[index]
+    return if (curated.size >= DAILY_NO_REPEAT_WINDOW * count) {
+        curated.shuffled(Random(DAILY_SHUFFLE_SEED))
+    } else {
+        list.filter { it.titleRu.isNotBlank() }.distinctBy { it.titleRu }
+    }
 }

@@ -1,16 +1,17 @@
 package kz.yers.quiz
 
 import kz.yers.quiz.model.AnimeInfo
-import kz.yers.quiz.repo.pickDailyTitle
+import kz.yers.quiz.repo.DAILY_TRACKS
+import kz.yers.quiz.repo.pickDailyTitles
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DailyPickerTest {
-    private val curatedPoolSize = 200
+    // Must be ≥ 90 days × DAILY_TRACKS for the curated path to engage.
+    private val curatedPoolSize = 500
 
-    /** 200 qualifying entries + noise that the curation predicate must drop. */
+    /** Qualifying entries + noise that the curation predicate must drop. */
     private fun sampleList(): List<AnimeInfo> {
         val qualifying =
             (0 until curatedPoolSize).map { i ->
@@ -38,58 +39,54 @@ class DailyPickerTest {
         return qualifying + noise
     }
 
+    private fun titles(
+        list: List<AnimeInfo>,
+        day: Long,
+    ) = pickDailyTitles(list, day).map { it.titleRu }
+
     @Test
-    fun deterministic_sameDaySameTitle() {
+    fun deterministic_sameDaySameTitlesInOrder() {
         val list = sampleList()
-        for (day in listOf(0L, 1L, 42L, 199L, 200L, 1_000L)) {
-            val a = pickDailyTitle(list, day)
-            val b = pickDailyTitle(list, day)
-            assertNotNull(a)
-            assertEquals(a!!.titleRu, b!!.titleRu)
+        for (day in listOf(0L, 1L, 42L, 199L, 500L, 1_000L)) {
+            val a = titles(list, day)
+            assertEquals(DAILY_TRACKS, a.size)
+            assertEquals(a, titles(list, day))
         }
     }
 
     @Test
     fun noRepeatWithinNinetyDayWindow() {
         val list = sampleList()
-        // For every start day across more than a full cycle, the 90 picks in
-        // [d, d+90) must all be distinct anime.
-        for (start in 0 until curatedPoolSize + 50) {
-            val window =
-                (start until start + 90).map { d ->
-                    pickDailyTitle(list, d.toLong())!!.titleRu
-                }
+        // For every start day across more than a full cycle, all tracks in [d, d+90) are distinct.
+        for (start in 0 until curatedPoolSize / DAILY_TRACKS + 50) {
+            val window = (start until start + 90).flatMap { titles(list, it.toLong()) }
             assertEquals(
                 "window starting at day $start had a repeat",
-                90,
+                90 * DAILY_TRACKS,
                 window.toSet().size,
             )
         }
     }
 
     @Test
-    fun recursExactlyEveryPoolSizeDays() {
+    fun recursAfterFullPoolCycle() {
         val list = sampleList()
+        val cycleDays = (curatedPoolSize / DAILY_TRACKS).toLong()
         for (day in 0L until 5L) {
-            assertEquals(
-                pickDailyTitle(list, day)!!.titleRu,
-                pickDailyTitle(list, day + curatedPoolSize)!!.titleRu,
-            )
+            assertEquals(titles(list, day), titles(list, day + cycleDays))
         }
     }
 
     @Test
     fun curationExcludesNoise() {
         val list = sampleList()
-        // Sweep a full cycle: no picked title should ever be a noise entry.
-        val picked =
-            (0 until curatedPoolSize).map { pickDailyTitle(list, it.toLong())!!.titleRu }.toSet()
+        val picked = (0 until curatedPoolSize / DAILY_TRACKS).flatMap { titles(list, it.toLong()) }.toSet()
         assertEquals(curatedPoolSize, picked.size)
-        assert(picked.none { it.isBlank() || it == "Низкий рейтинг" || it == "Эндинг" })
+        assertTrue(picked.none { it.isBlank() || it == "Низкий рейтинг" || it == "Эндинг" })
     }
 
     @Test
-    fun emptyListYieldsNull() {
-        assertNull(pickDailyTitle(emptyList(), 0L))
+    fun emptyListYieldsNothing() {
+        assertTrue(pickDailyTitles(emptyList(), 0L).isEmpty())
     }
 }

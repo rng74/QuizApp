@@ -2,6 +2,7 @@ package kz.yers.quiz.ui.composable.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.LeaderboardEntry
 import kz.yers.quiz.model.LeaderboardUiState
 import kz.yers.quiz.ui.composable.manga.MangaButton
@@ -44,11 +46,11 @@ import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
 
-private val PERIODS = listOf("День", "Неделя", "Месяц", "Все время")
-
 @Composable
 fun LeaderboardScreen(
     state: LeaderboardUiState,
+    selectedMode: GameMode,
+    onSelectMode: (GameMode) -> Unit,
     onRetry: () -> Unit,
 ) {
     Column(
@@ -60,9 +62,15 @@ fun LeaderboardScreen(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // One board per mode — an Easy run shouldn't outrank a Hardcore one.
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            // Only "Все время" is backed by data for now (single best-score doc per player).
-            PERIODS.forEach { label -> PeriodChip(label = label, selected = label == "Все время") }
+            GameMode.entries.forEach { mode ->
+                ModeChip(
+                    label = mode.shortLabel,
+                    selected = mode == selectedMode,
+                    onClick = { onSelectMode(mode) },
+                )
+            }
         }
 
         when (state) {
@@ -141,9 +149,10 @@ private fun LoadedContent(state: LeaderboardUiState.Loaded) {
 }
 
 @Composable
-private fun PeriodChip(
+private fun ModeChip(
     label: String,
     selected: Boolean,
+    onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(QuizRadii.pill)
     Box(
@@ -152,7 +161,8 @@ private fun PeriodChip(
                 .clip(shape)
                 .background(if (selected) QuizColors.ink else Color.White)
                 .border(QuizStrokes.regular, QuizColors.ink, shape)
-                .padding(horizontal = 10.dp, vertical = 4.dp),
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Text(
             text = label.uppercase(),
@@ -247,15 +257,6 @@ private fun LeaderboardRow(row: LeaderboardEntry) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (row.mode.isNotBlank()) {
-                    Text(
-                        text = row.mode.uppercase(),
-                        fontFamily = RussoOneFamily,
-                        fontSize = 12.sp,
-                        letterSpacing = 1.sp,
-                        color = QuizColors.ink.copy(alpha = 0.6f),
-                    )
-                }
             }
             Text(
                 text = row.score.toString(),

@@ -84,6 +84,8 @@ object Events {
     const val QUIZ_FINISHED = "quiz_finished"
     const val QUIZ_FORFEITED = "quiz_forfeited"
     const val QUIZ_PLAYBACK_ERROR = "quiz_playback_error"
+    const val REVIVE_OFFERED = "revive_offered"
+    const val REVIVE_USED = "revive_used"
 
     // Daily challenge
     const val DAILY_OPENED = "daily_opened"

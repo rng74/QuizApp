@@ -52,6 +52,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,6 +114,11 @@ fun QuizScreen(
     hintInventory: HintInventory = HintInventory(),
     questionHintState: QuestionHintState = QuestionHintState(),
     pendingAdType: HintType? = null,
+    // null = no lives in this run (daily).
+    lives: Int? = null,
+    maxLives: Int = 3,
+    reviveOffered: Boolean = false,
+    reviveAdPending: Boolean = false,
     onAnswerSelected: (String) -> Unit,
     onNextQuestion: () -> Unit,
     onPlaybackReady: () -> Unit,
@@ -121,6 +128,9 @@ fun QuizScreen(
     onAdComplete: () -> Unit = {},
     onAdCancel: () -> Unit = {},
     onClose: () -> Unit = {},
+    onAcceptRevive: () -> Unit = {},
+    onDeclineRevive: () -> Unit = {},
+    onReviveAdResult: (earned: Boolean) -> Unit = {},
 ) {
     var showExitDialog by remember { mutableStateOf(false) }
     // System back during a run mirrors the × button: confirm before forfeiting.
@@ -243,6 +253,10 @@ fun QuizScreen(
                 CloseButton(onClick = { showExitDialog = true })
                 Spacer(Modifier.width(10.dp))
                 ScoreChip(score = score, tint = tint, modifier = Modifier.scale(scale.value))
+                if (lives != null) {
+                    Spacer(Modifier.width(8.dp))
+                    LivesIndicator(lives = lives, maxLives = maxLives)
+                }
                 if (streak > 5) {
                     Spacer(Modifier.width(8.dp))
                     Image(
@@ -300,6 +314,13 @@ fun QuizScreen(
                                     ),
                                 ),
                     )
+                    if (userAnswer != null) {
+                        TrackReveal(
+                            title = question.correctAnswer.titleRu,
+                            track = "${question.correctAnswer.albumName} · ${question.correctAnswer.songName}",
+                            modifier = Modifier.align(Alignment.BottomStart),
+                        )
+                    }
                 }
             }
 
@@ -307,10 +328,12 @@ fun QuizScreen(
 
             AudioPlayer(
                 url = BASE_URL + question.correctAnswer.songLink,
-                needPlay = userAnswer == null,
-                paused = pendingAdType != null,
+                // Keeps playing through the answer reveal — hearing the track while its title
+                // shows is the payoff. The player advances with the button, never on clip end.
+                needPlay = true,
+                paused = pendingAdType != null || reviveAdPending,
                 onPlaybackReady = onPlaybackReady,
-                onPlaybackEnded = onNextQuestion,
+                onPlaybackEnded = {},
                 onPlaybackError = { onPlaybackError() },
             )
 
@@ -387,15 +410,16 @@ fun QuizScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            if (userAnswer != null) {
+            if (userAnswer != null && !reviveOffered && !reviveAdPending) {
+                val runContinues = (isCorrect || lives == null || lives > 0) && streak < totalQuestions
                 MangaButton(
                     label =
-                        if (isCorrect) {
+                        if (runContinues) {
                             stringResource(R.string.next_question)
                         } else {
                             stringResource(R.string.check_results)
                         },
-                    variant = if (isCorrect) MangaButtonVariant.Tint else MangaButtonVariant.Ink,
+                    variant = if (runContinues) MangaButtonVariant.Tint else MangaButtonVariant.Ink,
                     onClick = onNextQuestion,
                     modifier = Modifier.fillMaxWidth(),
                     minHeight = 56.dp,
@@ -460,6 +484,29 @@ fun QuizScreen(
             onReward = onAdComplete,
             onDismiss = onAdCancel,
         )
+        RewardedAdEffect(
+            active = reviveAdPending,
+            onReward = { onReviveAdResult(true) },
+            onDismiss = { onReviveAdResult(false) },
+        )
+
+        if (reviveOffered) {
+            AlertDialog(
+                onDismissRequest = onDeclineRevive,
+                title = { Text("Жизни закончились") },
+                text = { Text("Посмотри рекламу — получишь ещё одну жизнь и продолжишь забег.") },
+                confirmButton = {
+                    TextButton(onClick = onAcceptRevive) {
+                        Text("+1 ЖИЗНЬ ▶", color = tint, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDeclineRevive) {
+                        Text("Завершить")
+                    }
+                },
+            )
+        }
 
         if (showExitDialog) {
             AlertDialog(
@@ -481,6 +528,46 @@ fun QuizScreen(
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun LivesIndicator(
+    lives: Int,
+    maxLives: Int,
+) {
+    val description = "Жизни: $lives из $maxLives"
+    Text(
+        text = "♥".repeat(lives.coerceIn(0, maxLives)) + "♡".repeat((maxLives - lives).coerceIn(0, maxLives)),
+        color = errorColor(),
+        fontSize = 20.sp,
+        letterSpacing = 1.sp,
+        modifier = Modifier.semantics { contentDescription = description },
+    )
+}
+
+@Composable
+private fun TrackReveal(
+    title: String,
+    track: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth().padding(12.dp)) {
+        Text(
+            text = title,
+            color = Color.White,
+            fontFamily = RussoOneFamily,
+            fontSize = 18.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = track,
+            color = Color.White.copy(alpha = 0.85f),
+            fontSize = 13.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
