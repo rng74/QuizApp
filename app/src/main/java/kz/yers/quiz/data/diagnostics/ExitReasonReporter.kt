@@ -70,15 +70,15 @@ object ExitReasonReporter {
                     info.description?.let { append(" desc=").append(it) }
                 }
             crashlytics.log(message)
+            // Only report the interesting kinds — REASON_EXIT_SELF +
+            // REASON_USER_REQUESTED + REASON_USER_STOPPED are normal shutdowns and
+            // would drown both the Crashlytics inbox and the app_error analytics event.
+            if (info.reason in NOISY_OK_REASONS) continue
             analytics.log(
                 Events.ERROR,
                 Params.ERROR_KIND to "process_exit_$reasonName",
                 Params.ERROR_MESSAGE to (info.description ?: reasonName),
             )
-            // Only file a non-fatal for the interesting kinds — REASON_EXIT_SELF +
-            // REASON_USER_REQUESTED + REASON_USER_STOPPED are normal shutdowns and
-            // would drown the Crashlytics inbox.
-            if (info.reason in NOISY_OK_REASONS) continue
             crashlytics.recordException(
                 RuntimeException("Prior process exit: $reasonName — $message"),
             )

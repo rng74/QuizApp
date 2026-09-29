@@ -3,6 +3,7 @@ package kz.yers.quiz.ui.composable.hints
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,8 @@ import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import kz.yers.quiz.R
+import kz.yers.quiz.data.ads.AdsConsent
 import kz.yers.quiz.ui.theme.QuizColors
 
 // Production rewarded ad unit (matches the AdMob app id in AndroidManifest.xml).
@@ -60,12 +63,20 @@ fun RewardedAdEffect(
             currentOnDismiss()
             return@LaunchedEffect
         }
+        if (!AdsConsent.canRequestAds(context)) {
+            Toast.makeText(context, R.string.ad_unavailable, Toast.LENGTH_SHORT).show()
+            currentOnDismiss()
+            return@LaunchedEffect
+        }
         RewardedAd.load(
             context,
             REWARDED_AD_UNIT,
             AdRequest.Builder().build(),
             object : RewardedAdLoadCallback() {
                 override fun onAdFailedToLoad(error: LoadAdError) {
+                    // No-fill is the norm in regions Google Ads doesn't serve (e.g. RU) —
+                    // say so instead of silently dropping the spinner.
+                    Toast.makeText(context, R.string.ad_unavailable, Toast.LENGTH_SHORT).show()
                     currentOnDismiss()
                 }
 

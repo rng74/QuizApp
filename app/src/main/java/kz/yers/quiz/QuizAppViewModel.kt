@@ -93,6 +93,9 @@ class QuizAppViewModel(
 
     private var timerJob: Job? = null
 
+    // Identity of the question whose countdown has already been started (see onPlaybackReady).
+    private var timerArmedFor: QuizQuestion? = null
+
     private var isTimerRunning = mutableStateOf(false)
 
     private val _isPosterEnabled = mutableStateOf(true)
@@ -276,7 +279,7 @@ class QuizAppViewModel(
         // SKIP advances to a new question, which restarts the timer via the next
         // question's AudioPlayer. The others stay on the current question, so resume here.
         if (type != HintType.SKIP && appState.value is AppState.Quiz && userAnswer.value == null) {
-            startTimer()
+            resumeTimer()
         }
     }
 
@@ -287,7 +290,7 @@ class QuizAppViewModel(
             analytics.log(Events.HINT_AD_CANCELED, Params.HINT_TYPE to type.name)
         }
         if (appState.value is AppState.Quiz && userAnswer.value == null) {
-            startTimer()
+            resumeTimer()
         }
     }
 
@@ -656,6 +659,7 @@ class QuizAppViewModel(
         score.intValue = 0
         userAnswer.value = null
         questionHintState.value = QuestionHintState()
+        timeRemaining.longValue = maxTimePerQuestion
         skipRequested = false
         appState.value = AppState.Loading
         analytics.log(
@@ -744,12 +748,10 @@ class QuizAppViewModel(
         val totalScore = withContext(Dispatchers.IO) { runHistoryDao.totalScore() ?: 0 }
         val finishedShit = withContext(Dispatchers.IO) { runHistoryDao.runsForMode(GameMode.SHIT.name) > 0 }
         val anyLightning = recent.any { it.score >= 200 }
+        val totalCorrect = withContext(Dispatchers.IO) { runHistoryDao.totalCorrect() ?: 0 }
+        val totalAnswered = withContext(Dispatchers.IO) { runHistoryDao.totalAnswered() ?: 0 }
         val accuracy =
-            if (totalRuns == 0) {
-                0
-            } else {
-                ((totalScore.toLong() * 100L) / (totalRuns.toLong() * MAX_SCORE_PER_RUN)).toInt().coerceIn(0, 100)
-            }
+            if (totalAnswered == 0) 0 else (totalCorrect * 100 / totalAnswered).coerceIn(0, 100)
 
         val xp = totalScore
         val level = (xp / XP_PER_LEVEL).coerceAtLeast(0) + 1
@@ -802,6 +804,7 @@ class QuizAppViewModel(
         isNewRecord.value = false
         recordModeJustSet.value = null
         questionHintState.value = QuestionHintState()
+        timeRemaining.longValue = maxTimePerQuestion
         skipRequested = false
         analytics.log(Events.QUIZ_STARTED, Params.MODE to gameMode.name)
         loadQuizQuestions(gameMode)
@@ -817,6 +820,7 @@ class QuizAppViewModel(
             tries += 1
             isDailyRun = true
             questionHintState.value = QuestionHintState()
+            timeRemaining.longValue = maxTimePerQuestion
             skipRequested = false
             activeMode.value = GameMode.NORMAL
             runStartElapsedMs = SystemClock.elapsedRealtime()
@@ -861,10 +865,29 @@ class QuizAppViewModel(
         }
     }
 
-    fun startTimer() {
+    /**
+     * Arms the countdown for the current question — at most once per question. ExoPlayer
+     * reports STATE_READY again after every rebuffer, and a playback error may arrive before
+     * READY ever does; both paths call this, and neither may hand the player a fresh 10 s.
+     */
+    fun onPlaybackReady() {
+        val question = (appState.value as? AppState.Quiz)?.currentQuestion ?: return
+        if (timerArmedFor === question || userAnswer.value != null) return
+        timerArmedFor = question
+        runTimer(maxTimePerQuestion)
+    }
+
+    /** Continues an armed-but-paused countdown (after a rewarded ad) from where it stopped. */
+    private fun resumeTimer() {
+        val question = (appState.value as? AppState.Quiz)?.currentQuestion ?: return
+        if (timerArmedFor !== question) return
+        runTimer(timeRemaining.longValue)
+    }
+
+    private fun runTimer(fromMs: Long) {
         timerJob?.cancel()
 
-        timeRemaining.longValue = maxTimePerQuestion
+        timeRemaining.longValue = fromMs
         isTimerRunning.value = true
 
         val startTime = SystemClock.elapsedRealtime()
@@ -873,7 +896,7 @@ class QuizAppViewModel(
             viewModelScope.launch {
                 while (timeRemaining.longValue > 0L) {
                     val elapsed = SystemClock.elapsedRealtime() - startTime
-                    timeRemaining.longValue = (maxTimePerQuestion - elapsed).coerceAtLeast(0L)
+                    timeRemaining.longValue = (fromMs - elapsed).coerceAtLeast(0L)
                     delay(16L)
                 }
                 isTimerRunning.value = false
@@ -887,8 +910,17 @@ class QuizAppViewModel(
     }
 
     private fun onTimeUp() {
-        userAnswer.value = null
-        finishRun()
+        // Don't end the run instantly: park on the question so the correct answer is revealed,
+        // and let the "results" button (moveToNextQuestion) finish the run as a miss.
+        if (appState.value !is AppState.Quiz || userAnswer.value != null) return
+        userAnswer.value = TIMED_OUT
+        analytics.log(
+            Events.QUIZ_ANSWERED,
+            Params.MODE to mode(),
+            Params.QUESTION_INDEX to (appState.value as AppState.Quiz).currentQuestionIndex,
+            Params.CORRECT to false,
+            Params.TIME_REMAINING_MS to 0L,
+        )
     }
 
     fun setPosterEnabled(enabled: Boolean) {
@@ -949,6 +981,7 @@ class QuizAppViewModel(
                 )
             userAnswer.value = null
             questionHintState.value = QuestionHintState()
+            timeRemaining.longValue = maxTimePerQuestion
         } else {
             finishRun()
         }
@@ -964,6 +997,12 @@ class QuizAppViewModel(
         }
         val previousBest = repository.getHighScore()
         isNewRecord.value = finalScore > previousBest
+        // Persist here, not on the way back to the menu: "Play again" goes straight to
+        // startQuiz() and would otherwise drop the record.
+        if (!isDailyRun && isNewRecord.value) {
+            repository.setHighScore(finalScore)
+            _highScore.intValue = finalScore
+        }
         val currentIndexForAnalytics =
             (appState.value as? AppState.Quiz)?.currentQuestionIndex ?: 0
         val correctForAnalytics =
@@ -972,7 +1011,7 @@ class QuizAppViewModel(
             } ?: false
         val endedVia =
             when {
-                userAnswer.value == null -> "timeout"
+                userAnswer.value == null || userAnswer.value == TIMED_OUT -> "timeout"
                 !correctForAnalytics -> "wrong"
                 currentIndexForAnalytics >= totalQuestionsInRun.intValue - 1 -> "complete"
                 else -> "advance" // shouldn't reach finishRun on advance; here for safety
@@ -1012,6 +1051,8 @@ class QuizAppViewModel(
         lastRunCorrect.intValue =
             (if (correct) answeredIndex + 1 else answeredIndex).coerceIn(0, total)
         lastRunTotal.intValue = total
+        // Questions the player actually faced (skips count as faced, not as correct).
+        val answeredCount = (answeredIndex + 1).coerceAtMost(total)
 
         if (mode != null) {
             viewModelScope.launch {
@@ -1022,6 +1063,8 @@ class QuizAppViewModel(
                             score = finalScore,
                             durationMs = durationMs,
                             dateEpochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay(),
+                            correct = lastRunCorrect.intValue,
+                            answered = answeredCount,
                         ),
                     )
                     if (isDaily && currentQuestion != null) {
@@ -1145,6 +1188,7 @@ class QuizAppViewModel(
         userAnswer.value = null
         isNewRecord.value = false
         questionHintState.value = QuestionHintState()
+        timeRemaining.longValue = maxTimePerQuestion
         skipRequested = false
         quizQuestions = emptyList()
         appState.value = AppState.Menu
@@ -1152,8 +1196,6 @@ class QuizAppViewModel(
     }
 
     fun resetQuiz() {
-        repository.setHighScore(score.intValue)
-        _highScore.intValue = repository.getHighScore()
         appState.value = AppState.Menu
         viewModelScope.launch { refreshMenuStats() }
         userAnswer.value = null
@@ -1161,6 +1203,7 @@ class QuizAppViewModel(
         isNewRecord.value = false
         isDailyRun = false
         questionHintState.value = QuestionHintState()
+        timeRemaining.longValue = maxTimePerQuestion
         skipRequested = false
     }
 
@@ -1186,7 +1229,8 @@ class QuizAppViewModel(
     }
 
     companion object {
-        private const val MAX_SCORE_PER_RUN = 300
+        /** Sentinel [userAnswer] for a question whose timer ran out. Matches no option. */
+        const val TIMED_OUT = ""
         private const val XP_PER_LEVEL = 1000
         private const val COINS_PER_SCORE = 5
         private const val STREAK_BONUS_COINS = 50

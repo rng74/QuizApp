@@ -24,6 +24,7 @@
     <string name="hint_reveal_letter">Буква</string>
     <string name="hint_skip">Пропустить</string>
     <string name="hint_revealed_letter">Начинается с «%1$s»</string>
+    <string name="ad_unavailable">Реклама сейчас недоступна. Попробуй позже.</string>
     <string name="hint_get_more">+ Реклама</string>
     <string name="hint_count">×%1$d</string>
     <string name="ad_dialog_title">РЕКЛАМА</string>

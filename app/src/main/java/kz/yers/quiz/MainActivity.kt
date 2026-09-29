@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import kz.yers.quiz.data.ads.AdsConsent
 import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.analytics.Events
 import kz.yers.quiz.data.analytics.Params
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+        AdsConsent.gather(this)
         maybeRequestNotificationPermission()
         routeFromIntent(intent)
         setContent {

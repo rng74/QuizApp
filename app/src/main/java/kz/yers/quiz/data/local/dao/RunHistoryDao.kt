@@ -29,6 +29,12 @@ interface RunHistoryDao {
     @Query("SELECT SUM(score) FROM run_history")
     suspend fun totalScore(): Int?
 
+    @Query("SELECT SUM(correct) FROM run_history WHERE answered > 0")
+    suspend fun totalCorrect(): Int?
+
+    @Query("SELECT SUM(answered) FROM run_history WHERE answered > 0")
+    suspend fun totalAnswered(): Int?
+
     @Query("SELECT COUNT(*) FROM run_history WHERE mode = :mode")
     suspend fun runsForMode(mode: String): Int
 }

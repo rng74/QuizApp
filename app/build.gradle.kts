@@ -90,6 +90,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.play.review)
     implementation(libs.play.services.ads)
+    implementation(libs.ump)
     implementation(libs.konfetti)
     implementation(libs.lottie)
     implementation(libs.androidx.room.runtime)

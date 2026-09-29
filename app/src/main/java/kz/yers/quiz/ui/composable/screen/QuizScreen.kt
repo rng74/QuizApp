@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kz.yers.quiz.BASE_URL
+import kz.yers.quiz.QuizAppViewModel
 import kz.yers.quiz.R
 import kz.yers.quiz.model.HintInventory
 import kz.yers.quiz.model.HintType
@@ -442,7 +443,12 @@ fun QuizScreen(
                     contentDescription = null,
                 )
                 ImpactText(
-                    text = if (overlayCorrect) "ВЕРНО!" else "МИМО!",
+                    text =
+                        when {
+                            overlayCorrect -> "ВЕРНО!"
+                            userAnswer == QuizAppViewModel.TIMED_OUT -> "ВРЕМЯ!"
+                            else -> "МИМО!"
+                        },
                     style = MaterialTheme.typography.displayLarge,
                     tintColor = if (overlayCorrect) correctSurface else errorSurface,
                 )

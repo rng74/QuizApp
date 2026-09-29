@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kz.yers.quiz.QuizAppViewModel
+import kz.yers.quiz.data.ads.AdsConsent
 import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.analytics.Events
 import kz.yers.quiz.data.analytics.Params
@@ -181,12 +182,14 @@ fun AppNavHost(
                     pendingAdType = pendingAd,
                     onAnswerSelected = viewModel::submitAnswer,
                     onNextQuestion = viewModel::moveToNextQuestion,
-                    onPlaybackReady = viewModel::startTimer,
+                    onPlaybackReady = viewModel::onPlaybackReady,
                     onPlaybackError = {
                         analytics.log(
                             Events.QUIZ_PLAYBACK_ERROR,
                             Params.MODE to (viewModel.activeMode.value?.name ?: "UNKNOWN"),
                         )
+                        // A track that never loads must not leave the question without a clock.
+                        viewModel.onPlaybackReady()
                     },
                     onUseHint = viewModel::useHint,
                     onRequestAd = viewModel::requestRewardedAd,
@@ -263,6 +266,7 @@ fun AppNavHost(
                 )
             }
             composable(Routes.SETTINGS) {
+                val settingsCtx = androidx.compose.ui.platform.LocalContext.current
                 val a11y by viewModel.a11y
                 val isPosterEnabled by viewModel.isPosterEnabled
                 val soundEnabled by viewModel.soundEnabled
@@ -280,7 +284,11 @@ fun AppNavHost(
                             onDyslexiaToggle = viewModel::setDyslexiaFont,
                             onReplayTutorial = viewModel::replayTutorial,
                             onResetHighScore = viewModel::resetHighScore,
+                            onPrivacyOptions = {
+                                (settingsCtx as? android.app.Activity)?.let(AdsConsent::showPrivacyOptions)
+                            },
                         ),
+                    showPrivacyOptions = AdsConsent.privacyOptionsRequired(settingsCtx),
                 )
             }
             composable(Routes.NOTIFICATIONS) {

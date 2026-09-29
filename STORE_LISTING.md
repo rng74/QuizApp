@@ -81,7 +81,7 @@ plain text + simple line breaks; no markdown.
 • Шрифт Lexend для читаемости при дислексии
 
 🔒 ПРИВАТНОСТЬ
-Никаких аккаунтов. Анонимный вход в Firebase, никаких email/пароля. Личные данные не собираем. Аналитика обезличена — только статистика прохождений.
+Никаких аккаунтов, email и паролей — только анонимный вход. Для работы игры, аналитики и рекламы используются идентификаторы устройства (подробности — в разделе «Безопасность данных»).
 
 📡 ЧТО НУЖНО
 • Интернет — для загрузки треков и работы дуэлей/лидерборда
@@ -163,7 +163,8 @@ Reduce motion, color-blind safe palette, +20% text scale, Lexend dyslexia
 font.
 
 PRIVACY
-Anonymous Firebase auth. No emails, no passwords. No personal data.
+Anonymous sign-in, no emails or passwords. Device identifiers are used for
+gameplay, analytics and ads — see the Data safety section.
 ```
 
 ---
@@ -271,19 +272,25 @@ Expected rating after submission: **PEGI 3 / ESRB Everyone / IARC 3+**.
 
 ### Data safety  (Policy → App content → Data safety)
 
-Declare these, then re-check `firestore.rules` and our code matches.
+Google Play flags the app when these don't match the SDKs it detects
+(play-services-ads, Firebase Analytics/Crashlytics/Auth/Firestore). Declare:
 
-| Category | Collected? | Shared? | Optional? | Purpose |
+| Category | Collected | Shared | Optional? | Purposes |
 |---|---|---|---|---|
-| Personal info → Name | Yes (user-entered display name, ≤ 24 chars) | Yes (visible on leaderboard / to friends) | No | App functionality |
-| App activity → App interactions | Yes (Firebase Analytics events) | No | Yes (no opt-out switch yet) | Analytics |
-| Device or other IDs → Device ID | Yes (Firebase anon UID, AdMob ID) | Yes (AdMob) | No | Functionality + ads |
-| App info & performance → Crash logs | Yes (Crashlytics) | No | No | Analytics |
-| App info & performance → Diagnostics | Yes (perf + exit reasons) | No | No | Analytics |
+| Personal info → Name (user-entered nickname, ≤ 24 chars) | Yes | No (shown publicly on leaderboard/duels — that's app functionality, not "sharing") | Yes | App functionality |
+| Location → Approximate location (IP-derived, AdMob) | Yes | Yes | No | Advertising, Analytics, Fraud prevention |
+| App activity → App interactions | Yes | Yes (AdMob) | No | Analytics, Advertising |
+| App info & performance → Crash logs | Yes | No | No | Analytics |
+| App info & performance → Diagnostics | Yes | Yes (AdMob) | No | Analytics, Advertising |
+| Device or other IDs (Ad ID, App set ID, Firebase installation/app-instance IDs, anonymous Firebase UID) | Yes | Yes (AdMob) | No | App functionality, Analytics, Advertising, Fraud prevention |
 
-Not collected: email, password, photos, location, contacts, calendar, audio
-recordings, files. The "anonymous" leaderboard uid means user identity is not
-recoverable from the data.
+- Data is encrypted in transit: **Yes**.
+- Users can request deletion: answer truthfully — today there is no in-app
+  deletion path (anonymous docs stay in Firestore).
+- **App content → Advertising ID**: "Yes, uses Ad ID" → Advertising, Analytics.
+
+Not collected: email, password, photos, precise location, contacts, calendar,
+audio recordings, files.
 
 ### Ads declaration  (Policy → App content → Ads)
 - **Contains ads: Yes** (AdMob rewarded ads in the hint shop).
@@ -291,9 +298,8 @@ recoverable from the data.
 
 ### Policy: ads + COPPA  (Policy → App content → Ads → "Are your ads compliant…")
 - "Are users under 13 in your target audience": **No** (we target 13+).
-- "Have you implemented UMP / consent for EEA users": **No (pending)** — your
-  next AdMob TODO is wiring the User Messaging Platform consent flow for
-  GDPR/Switzerland/UK before serving to EEA users at scale.
+- UMP consent is wired in code (`data/ads/AdsConsent.kt`). It only shows once a
+  GDPR message is published in AdMob → Privacy & messaging → European regulations.
 
 ---
 
