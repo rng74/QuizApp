@@ -6,6 +6,8 @@ import androidx.core.content.edit
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kz.yers.quiz.HIGH_SCORE
 import kz.yers.quiz.model.AnimeInfo
@@ -17,12 +19,21 @@ class AnimeRepository(
     private val gson: Gson,
     private val sharedPreferences: SharedPreferences,
 ) {
-    private var animeList: List<AnimeInfo> = emptyList()
+    @Volatile private var animeList: List<AnimeInfo> = emptyList()
+
+    /** Distinct `titleRu` values, built once at load so option generation doesn't rescan the list. */
+    @Volatile private var allTitles: List<String> = emptyList()
+    private val loadMutex = Mutex()
+
+    /**
+     * Parses `info.json` (~4.7 MB, ~15k entries) ahead of the first quiz. Called at app start so
+     * the parse overlaps the home screen instead of blocking "Загрузка…". Safe to race with a
+     * quiz start: the second caller waits on the same load instead of parsing again.
+     */
+    suspend fun preload() = ensureLoaded()
 
     suspend fun getRandomizedQuestions(numberOfQuestions: Int): List<QuizQuestion> {
-        if (animeList.isEmpty()) {
-            loadAnimeData()
-        }
+        ensureLoaded()
 
         return generateQuizQuestions(animeList, numberOfQuestions)
     }
@@ -31,9 +42,7 @@ class AnimeRepository(
         numberOfQuestions: Int,
         rating: Float,
     ): List<QuizQuestion> {
-        if (animeList.isEmpty()) {
-            loadAnimeData()
-        }
+        ensureLoaded()
 
         return generateQuizQuestions(animeList, numberOfQuestions, rating, true)
     }
@@ -42,9 +51,7 @@ class AnimeRepository(
         numberOfQuestions: Int,
         rating: Float,
     ): List<QuizQuestion> {
-        if (animeList.isEmpty()) {
-            loadAnimeData()
-        }
+        ensureLoaded()
 
         return generateQuizQuestions(animeList, numberOfQuestions, rating, false)
     }
@@ -60,7 +67,7 @@ class AnimeRepository(
      * before this change, and acceptable).
      */
     suspend fun getDailyQuestions(epochDay: Long): List<QuizQuestion> {
-        if (animeList.isEmpty()) loadAnimeData()
+        ensureLoaded()
         return pickDailyTitles(animeList, epochDay).map { correct ->
             QuizQuestion(correctAnswer = correct, options = generateOptions(correct))
         }
@@ -76,7 +83,7 @@ class AnimeRepository(
         count: Int,
         minRatingGt: Float,
     ): List<QuizQuestion> {
-        if (animeList.isEmpty()) loadAnimeData()
+        ensureLoaded()
         val rng = Random(seed)
         val pool =
             animeList
@@ -104,15 +111,21 @@ class AnimeRepository(
         return (distractors + correct.titleRu).shuffled(rng)
     }
 
-    private suspend fun loadAnimeData() {
-        withContext(Dispatchers.IO) {
-            val jsonString =
-                context.assets.open("info.json")
-                    .bufferedReader()
-                    .use { it.readText() }
-
-            val listType = object : TypeToken<List<AnimeInfo>>() {}.type
-            animeList = gson.fromJson(jsonString, listType)
+    private suspend fun ensureLoaded() {
+        if (animeList.isNotEmpty()) return
+        loadMutex.withLock {
+            if (animeList.isNotEmpty()) return
+            withContext(Dispatchers.IO) {
+                // Stream straight from the asset: reading the whole file into a String first
+                // doubled peak memory and added an extra full pass over 4.7 MB.
+                val listType = object : TypeToken<List<AnimeInfo>>() {}.type
+                val list: List<AnimeInfo> =
+                    context.assets.open("info.json").bufferedReader().use { reader ->
+                        gson.fromJson(reader, listType)
+                    }
+                allTitles = list.map { it.titleRu }.distinct()
+                animeList = list
+            }
         }
     }
 
@@ -148,28 +161,17 @@ class AnimeRepository(
         return questions
     }
 
-    private fun generateOptions(
-        correctAnime: AnimeInfo,
-        rating: Float? = null,
-        isGreater: Boolean? = null,
-    ): List<String> {
-        val allTitles =
-            animeList.filter {
-                (
-                    if (rating != null && isGreater != null) {
-                        if (isGreater) {
-                            it.rating > rating
-                        } else {
-                            it.rating <= rating
-                        }
-                    } else {
-                        true
-                    }
-                ) && it.titleRu != correctAnime.titleRu
-            }.map { it.titleRu }.distinct()
-        val incorrectOptions = allTitles.shuffled().take(3)
-        val options = incorrectOptions + correctAnime.titleRu
-        return options.shuffled()
+    private fun generateOptions(correctAnime: AnimeInfo): List<String> {
+        val titles = allTitles
+        // Uniform picks from the precomputed distinct titles: same distribution as shuffling
+        // the whole list, but O(1) per question instead of filter+distinct over ~15k entries.
+        val wanted = minOf(3, titles.size - 1)
+        val incorrect = LinkedHashSet<String>(4)
+        while (incorrect.size < wanted) {
+            val candidate = titles[Random.nextInt(titles.size)]
+            if (candidate != correctAnime.titleRu) incorrect += candidate
+        }
+        return (incorrect.toList() + correctAnime.titleRu).shuffled()
     }
 
     fun setHighScore(score: Int) {

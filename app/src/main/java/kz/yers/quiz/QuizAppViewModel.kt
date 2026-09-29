@@ -166,6 +166,10 @@ class QuizAppViewModel(
 
     init {
         _highScore.intValue = repository.getHighScore()
+        // Parse the track catalog while the player is on the home screen, so the first
+        // "Играть" doesn't sit on "Загрузка…" for the whole 4.7 MB parse.
+        // A failure here is retried by the quiz start's own load.
+        viewModelScope.launch { runCatching { repository.preload() } }
         viewModelScope.launch {
             notifications.observe().collect { notificationsList.value = it }
         }
