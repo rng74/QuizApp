@@ -273,16 +273,18 @@ Expected rating after submission: **PEGI 3 / ESRB Everyone / IARC 3+**.
 ### Data safety  (Policy → App content → Data safety)
 
 Google Play flags the app when these don't match the SDKs it detects
-(play-services-ads, Firebase Analytics/Crashlytics/Auth/Firestore). Declare:
+(Yandex Mobile Ads + bundled AppMetrica, Google Next-Gen ads SDK via Yandex
+mediation, Firebase Analytics/Crashlytics/Auth/Firestore). "Ad networks" below
+= Yandex and Google. Declare:
 
 | Category | Collected | Shared | Optional? | Purposes |
 |---|---|---|---|---|
 | Personal info → Name (user-entered nickname, ≤ 24 chars) | Yes | No (shown publicly on leaderboard/duels — that's app functionality, not "sharing") | Yes | App functionality |
-| Location → Approximate location (IP-derived, AdMob) | Yes | Yes | No | Advertising, Analytics, Fraud prevention |
-| App activity → App interactions | Yes | Yes (AdMob) | No | Analytics, Advertising |
+| Location → Approximate location (IP-derived, ad networks) | Yes | Yes | No | Advertising, Analytics, Fraud prevention |
+| App activity → App interactions | Yes | Yes (ad networks) | No | Analytics, Advertising |
 | App info & performance → Crash logs | Yes | No | No | Analytics |
-| App info & performance → Diagnostics | Yes | Yes (AdMob) | No | Analytics, Advertising |
-| Device or other IDs (Ad ID, App set ID, Firebase installation/app-instance IDs, anonymous Firebase UID) | Yes | Yes (AdMob) | No | App functionality, Analytics, Advertising, Fraud prevention |
+| App info & performance → Diagnostics | Yes | Yes (ad networks) | No | Analytics, Advertising |
+| Device or other IDs (Ad ID, App set ID, Firebase installation/app-instance IDs, anonymous Firebase UID, AppMetrica device ID) | Yes | Yes (ad networks) | No | App functionality, Analytics, Advertising, Fraud prevention |
 
 - Data is encrypted in transit: **Yes**.
 - Users can request deletion: answer truthfully — today there is no in-app
@@ -293,8 +295,9 @@ Not collected: email, password, photos, precise location, contacts, calendar,
 audio recordings, files.
 
 ### Ads declaration  (Policy → App content → Ads)
-- **Contains ads: Yes** (AdMob rewarded ads in the hint shop).
-- Ad ID permission already in the manifest (auto-injected by play-services-ads).
+- **Contains ads: Yes** — rewarded ads (hints) and interstitials between runs,
+  served by Yandex Mobile Ads with Google demand via Yandex mediation.
+- Ad ID permission is merged into the manifest by the ads SDKs.
 
 ### Policy: ads + COPPA  (Policy → App content → Ads → "Are your ads compliant…")
 - "Are users under 13 in your target audience": **No** (we target 13+).

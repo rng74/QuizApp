@@ -103,6 +103,8 @@ object Events {
     const val HINT_AD_REQUESTED = "hint_ad_requested"
     const val HINT_AD_REWARDED = "hint_ad_rewarded"
     const val HINT_AD_CANCELED = "hint_ad_canceled"
+    const val AD_IMPRESSION = "ad_impression"
+    const val AD_LOAD_FAILED = "ad_load_failed"
     const val COINS_EARNED = "coins_earned"
     const val COINS_SPENT = "coins_spent"
     const val NEW_HIGH_SCORE = "new_high_score"
@@ -146,6 +148,7 @@ object Params {
 
     const val HINT_TYPE = "hint_type" // FIFTY_FIFTY | REVEAL_LETTER | SKIP
     const val PRICE = "price"
+    const val AD_FORMAT = "ad_format" // rewarded | interstitial
     const val COINS_DELTA = "coins_delta"
     const val COINS_SOURCE = "coins_source" // run | streak_bonus
     const val COINS_SINK = "coins_sink" // hint

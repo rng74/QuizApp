@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kz.yers.quiz.data.ads.AdsManager
 import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.analytics.Events
 import kz.yers.quiz.data.analytics.Params
@@ -72,6 +73,7 @@ class QuizAppViewModel(
     private val friendDao: FriendDao,
     private val friends: FriendsRepository,
     private val analytics: Analytics,
+    private val ads: AdsManager,
 ) : ViewModel() {
     var appState = mutableStateOf<AppState>(AppState.Menu)
 
@@ -1043,6 +1045,7 @@ class QuizAppViewModel(
                 ?: quizQuestions.firstOrNull()
         val isDaily = isDailyRun
         resultWasDaily.value = isDaily
+        if (!isDaily) ads.onRunFinished()
         val correct =
             currentQuestion != null && userAnswer.value == currentQuestion.correctAnswer.titleRu
 

@@ -37,11 +37,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.QuizApp"
         tools:targetApi="31">
-        <!-- AdMob production APPLICATION_ID. The rewarded ad unit id used by
-             RewardedAdEffect.kt belongs to the same AdMob account. -->
+        <!-- AdMob APPLICATION_ID — still required: Google demand is served through the
+             Yandex mediation adapter (Google Next-Gen ads SDK). -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-8999744317337712~9846853431" />
+
+        <!-- Yandex Mobile Ads is initialized by AdsManager once UMP consent allows it. -->
+        <meta-data
+            android:name="com.yandex.mobile.ads.AUTOMATIC_SDK_INITIALIZATION"
+            android:value="false" />
 
         <activity
             android:name=".MainActivity"

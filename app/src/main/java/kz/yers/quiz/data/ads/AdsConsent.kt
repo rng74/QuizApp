@@ -2,40 +2,47 @@ package kz.yers.quiz.data.ads
 
 import android.app.Activity
 import android.content.Context
-import com.google.android.gms.ads.MobileAds
 import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * GDPR / UK / Swiss consent via Google's User Messaging Platform, and the single place the ads
- * SDK is initialized. Outside regulated regions UMP resolves immediately with `canRequestAds`
- * = true, so this adds no friction for RU/CIS players.
+ * GDPR / UK / Swiss consent via Google's User Messaging Platform. UMP stores IAB TCF v2 strings
+ * that the Yandex SDK (and the networks it mediates) read automatically. Outside regulated
+ * regions UMP resolves immediately with `canRequestAds` = true — no friction for RU/CIS players.
  *
  * The consent message itself is configured in AdMob → Privacy & messaging → European
- * regulations; until one is published, UMP shows nothing and ads stay non-personalized-safe.
+ * regulations; until one is published, UMP shows nothing.
  */
 object AdsConsent {
-    private val adsInitialized = AtomicBoolean(false)
+    private val adsStarted = AtomicBoolean(false)
+    private var onAdsAllowed: (() -> Unit)? = null
 
     private fun info(context: Context): ConsentInformation = UserMessagingPlatform.getConsentInformation(context)
 
-    /** Call once per launch from the Activity. Shows the consent form if (and only if) required. */
-    fun gather(activity: Activity) {
+    /**
+     * Call once per launch from the Activity. Shows the consent form if (and only if) required,
+     * then invokes [startAds] once — as soon as consent allows requesting ads.
+     */
+    fun gather(
+        activity: Activity,
+        startAds: () -> Unit,
+    ) {
+        onAdsAllowed = startAds
         val info = info(activity)
         info.requestConsentInfoUpdate(
             activity,
             ConsentRequestParameters.Builder().build(),
             {
                 UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) {
-                    initAdsIfAllowed(activity)
+                    startAdsIfAllowed(activity)
                 }
             },
-            { initAdsIfAllowed(activity) },
+            { startAdsIfAllowed(activity) },
         )
         // Consent from a previous session is already cached — don't wait for the network.
-        initAdsIfAllowed(activity)
+        startAdsIfAllowed(activity)
     }
 
     fun canRequestAds(context: Context): Boolean = info(context).canRequestAds()
@@ -46,13 +53,13 @@ object AdsConsent {
             ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
 
     fun showPrivacyOptions(activity: Activity) {
-        UserMessagingPlatform.showPrivacyOptionsForm(activity) { initAdsIfAllowed(activity) }
+        UserMessagingPlatform.showPrivacyOptionsForm(activity) { startAdsIfAllowed(activity) }
     }
 
-    private fun initAdsIfAllowed(context: Context) {
+    private fun startAdsIfAllowed(context: Context) {
         if (!canRequestAds(context)) return
-        if (adsInitialized.compareAndSet(false, true)) {
-            MobileAds.initialize(context.applicationContext)
+        if (adsStarted.compareAndSet(false, true)) {
+            onAdsAllowed?.invoke()
         }
     }
 }
