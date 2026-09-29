@@ -47,6 +47,7 @@ import kotlinx.coroutines.delay
 import kz.yers.quiz.R
 import kz.yers.quiz.model.DailyLiveStats
 import kz.yers.quiz.model.GameMode
+import kz.yers.quiz.repo.DAILY_TRACKS
 import kz.yers.quiz.ui.composable.manga.MangaIcons
 import kz.yers.quiz.ui.composable.manga.mangaClickable
 import kz.yers.quiz.ui.composable.manga.mangaPressShadow
@@ -213,7 +214,7 @@ private fun DailyHero(
                             color = QuizColors.ink,
                         )
                         Text(
-                            text = "Один трек на всех · топ-100 получают монеты",
+                            text = "$DAILY_TRACKS треков на всех · 2× очки",
                             fontWeight = FontWeight.Medium,
                             fontSize = 11.sp,
                             lineHeight = 15.sp,

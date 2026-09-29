@@ -23,8 +23,8 @@ android {
         applicationId = "kz.yers.quiz"
         minSdk = 24
         targetSdk = 36
-        versionCode = 5
-        versionName = "5.0"
+        versionCode = 6
+        versionName = "6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -89,7 +89,11 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
     implementation(libs.play.review)
-    implementation(libs.play.services.ads)
+    implementation(libs.yandex.mobileads)
+    // Google (AdMob) demand via Yandex mediation. Pulls Google's Next-Gen ads SDK, which
+    // can't coexist with play-services-ads — so the app talks only to the Yandex API.
+    implementation(libs.yandex.mediation.google)
+    implementation(libs.ump)
     implementation(libs.konfetti)
     implementation(libs.lottie)
     implementation(libs.androidx.room.runtime)

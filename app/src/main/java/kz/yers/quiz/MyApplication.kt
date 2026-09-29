@@ -5,7 +5,6 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-import com.google.android.gms.ads.MobileAds
 import kz.yers.quiz.data.notifications.DailyReminderWorker
 import kz.yers.quiz.data.notifications.NotificationChannels
 import kz.yers.quiz.koin.appModule
@@ -29,7 +28,7 @@ class MyApplication : Application(), ImageLoaderFactory {
             modules(appModule)
         }
 
-        MobileAds.initialize(this)
+        // Ads SDK init happens in AdsConsent.gather() once consent allows it.
 
         NotificationChannels.ensure(this)
         DailyReminderWorker.schedule(this)

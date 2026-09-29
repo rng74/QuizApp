@@ -9,8 +9,8 @@ enum class GameMode(
     val rule: String,
     val tint: Color,
 ) {
-    EASY("Изи >9", "Изи", "Только топовые ОПы", QuizColors.modeEasy),
-    NORMAL("Норм >8", "Норм", "Хорошо известные ОПы", QuizColors.modeNormal),
+    EASY("Изи 8.3+", "Изи", "Только топовые ОПы", QuizColors.modeEasy),
+    NORMAL("Норм 7.5+", "Норм", "Хорошо известные ОПы", QuizColors.modeNormal),
     RANDOM("Рандом ~", "Рандом", "Любая песня · непредсказуемо", QuizColors.modeRandom),
-    SHIT("Шарю <5", "Шарю", "Только редкие · хардкор", QuizColors.modeShit),
+    SHIT("Шарю ≤6", "Шарю", "Редкие · OP, ED и OST", QuizColors.modeShit),
 }

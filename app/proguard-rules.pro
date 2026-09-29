@@ -90,9 +90,11 @@
 -keepclassmembers class kz.yers.quiz.data.local.entity.** { *; }
 -dontwarn androidx.room.paging.**
 
-# --- AdMob (play-services-ads) ----------------------------------------------
--keep class com.google.android.gms.ads.** { *; }
--dontwarn com.google.android.gms.ads.**
+# --- Ads: Yandex Mobile Ads + mediation adapters -----------------------------
+# The SDKs ship consumer rules; adapters are instantiated reflectively by the
+# mediation layer, so keep them explicitly as a belt-and-braces measure.
+-keep class com.yandex.mobile.ads.mediation.** { *; }
+-dontwarn com.google.android.libraries.ads.mobile.sdk.**
 
 # --- Media3 ExoPlayer -------------------------------------------------------
 -keep class androidx.media3.** { *; }

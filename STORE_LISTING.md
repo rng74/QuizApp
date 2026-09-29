@@ -54,7 +54,7 @@ plain text + simple line breaks; no markdown.
 • Хардкор — забытые треки и нишевые сезоны
 
 🔥 ДНЕВНОЙ ВЫЗОВ
-Один трек на всех — для каждого игрока в мире одинаковый. Двойные очки. Серия из подряд сыгранных дней — копи, не теряй.
+5 треков на всех — для каждого игрока в мире одинаковые. Двойные очки. Серия из подряд сыгранных дней — копи, не теряй.
 
 ⚔️ ДУЭЛЬ С ДРУГОМ
 Создаёшь дуэль — получаешь 6-символьный код. Делишься с другом — он подключается. Оба слушают один и тот же набор из 10 треков (без подсматривания), потом сравниваете счёт. Никаких аккаунтов и регистраций.
@@ -69,7 +69,10 @@ plain text + simple line breaks; no markdown.
 Покупаешь за монеты или смотришь короткую рекламу.
 
 🏆 МОНЕТЫ
-Зарабатываешь за каждый ответ. Бонус за каждые 7 дней серии. Тратишь на подсказки в магазине.
+Зарабатываешь за каждый верный ответ, плюс бонус за пройденный забег и за каждые 7 дней серии. Тратишь на подсказки в магазине.
+
+❤️ ТРИ ЖИЗНИ
+Ошибка или таймаут отнимают жизнь. После каждого ответа — название аниме и трека. Закончились жизни — можно продолжить за рекламу.
 
 🎌 СТИЛЬ
 Манга-дизайн: страницы в стиле комикса, рукописные шрифты, акценты «дон!». Не очередной плоский Material.
@@ -81,7 +84,7 @@ plain text + simple line breaks; no markdown.
 • Шрифт Lexend для читаемости при дислексии
 
 🔒 ПРИВАТНОСТЬ
-Никаких аккаунтов. Анонимный вход в Firebase, никаких email/пароля. Личные данные не собираем. Аналитика обезличена — только статистика прохождений.
+Никаких аккаунтов, email и паролей — только анонимный вход. Для работы игры, аналитики и рекламы используются идентификаторы устройства (подробности — в разделе «Безопасность данных»).
 
 📡 ЧТО НУЖНО
 • Интернет — для загрузки треков и работы дуэлей/лидерборда
@@ -145,7 +148,7 @@ GAME MODES
 • Hardcore — obscure tracks and niche seasons
 
 DAILY CHALLENGE
-Same track for every player worldwide, every day. Double points. Streak
+Same 5 tracks for every player worldwide, every day. Double points. Streak
 counter rewards consecutive days.
 
 CODE-BASED DUEL
@@ -163,7 +166,8 @@ Reduce motion, color-blind safe palette, +20% text scale, Lexend dyslexia
 font.
 
 PRIVACY
-Anonymous Firebase auth. No emails, no passwords. No personal data.
+Anonymous sign-in, no emails or passwords. Device identifiers are used for
+gameplay, analytics and ads — see the Data safety section.
 ```
 
 ---
@@ -217,7 +221,7 @@ Recommended order (Play renders left-to-right; first 2 do most of the lifting).
 3. **Result screen** — `ResultScreen` with a perfect run, "+N МОНЕТ", share
    button. Caption: "Награды за каждый трек".
 4. **Daily challenge** — `DailyChallengeScreen` showing the countdown +
-   live stats (place / players / solved). Caption: "Один трек на всех".
+   live stats (place / players / solved). Caption: "5 треков на всех".
 5. **Duel setup** — `DuelSetupScreen` with the 6-character code generated +
    share sheet. Caption: "Дуэль по коду".
 6. **Leaderboard** — `LeaderboardScreen` top-30. Caption: "Глобальный рейтинг".
@@ -271,29 +275,37 @@ Expected rating after submission: **PEGI 3 / ESRB Everyone / IARC 3+**.
 
 ### Data safety  (Policy → App content → Data safety)
 
-Declare these, then re-check `firestore.rules` and our code matches.
+Google Play flags the app when these don't match the SDKs it detects
+(Yandex Mobile Ads + bundled AppMetrica, Google Next-Gen ads SDK via Yandex
+mediation, Firebase Analytics/Crashlytics/Auth/Firestore). "Ad networks" below
+= Yandex and Google. Declare:
 
-| Category | Collected? | Shared? | Optional? | Purpose |
+| Category | Collected | Shared | Optional? | Purposes |
 |---|---|---|---|---|
-| Personal info → Name | Yes (user-entered display name, ≤ 24 chars) | Yes (visible on leaderboard / to friends) | No | App functionality |
-| App activity → App interactions | Yes (Firebase Analytics events) | No | Yes (no opt-out switch yet) | Analytics |
-| Device or other IDs → Device ID | Yes (Firebase anon UID, AdMob ID) | Yes (AdMob) | No | Functionality + ads |
-| App info & performance → Crash logs | Yes (Crashlytics) | No | No | Analytics |
-| App info & performance → Diagnostics | Yes (perf + exit reasons) | No | No | Analytics |
+| Personal info → Name (user-entered nickname, ≤ 24 chars) | Yes | No (shown publicly on leaderboard/duels — that's app functionality, not "sharing") | Yes | App functionality |
+| Location → Approximate location (IP-derived, ad networks) | Yes | Yes | No | Advertising, Analytics, Fraud prevention |
+| App activity → App interactions | Yes | Yes (ad networks) | No | Analytics, Advertising |
+| App info & performance → Crash logs | Yes | No | No | Analytics |
+| App info & performance → Diagnostics | Yes | Yes (ad networks) | No | Analytics, Advertising |
+| Device or other IDs (Ad ID, App set ID, Firebase installation/app-instance IDs, anonymous Firebase UID, AppMetrica device ID) | Yes | Yes (ad networks) | No | App functionality, Analytics, Advertising, Fraud prevention |
 
-Not collected: email, password, photos, location, contacts, calendar, audio
-recordings, files. The "anonymous" leaderboard uid means user identity is not
-recoverable from the data.
+- Data is encrypted in transit: **Yes**.
+- Users can request deletion: answer truthfully — today there is no in-app
+  deletion path (anonymous docs stay in Firestore).
+- **App content → Advertising ID**: "Yes, uses Ad ID" → Advertising, Analytics.
+
+Not collected: email, password, photos, precise location, contacts, calendar,
+audio recordings, files.
 
 ### Ads declaration  (Policy → App content → Ads)
-- **Contains ads: Yes** (AdMob rewarded ads in the hint shop).
-- Ad ID permission already in the manifest (auto-injected by play-services-ads).
+- **Contains ads: Yes** — rewarded ads (hints) and interstitials between runs,
+  served by Yandex Mobile Ads with Google demand via Yandex mediation.
+- Ad ID permission is merged into the manifest by the ads SDKs.
 
 ### Policy: ads + COPPA  (Policy → App content → Ads → "Are your ads compliant…")
 - "Are users under 13 in your target audience": **No** (we target 13+).
-- "Have you implemented UMP / consent for EEA users": **No (pending)** — your
-  next AdMob TODO is wiring the User Messaging Platform consent flow for
-  GDPR/Switzerland/UK before serving to EEA users at scale.
+- UMP consent is wired in code (`data/ads/AdsConsent.kt`). It only shows once a
+  GDPR message is published in AdMob → Privacy & messaging → European regulations.
 
 ---
 

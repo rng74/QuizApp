@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import kz.yers.quiz.QuizAppViewModel
+import kz.yers.quiz.data.ads.AdsManager
 import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.local.AppDatabase
 import kz.yers.quiz.data.notifications.NotificationRepository
@@ -36,9 +37,10 @@ val appModule =
         single { LeaderboardRepository(analytics = get()) }
         single { DailyStatsRepository() }
         single { DuelRepository(analytics = get()) }
+        single { AdsManager(androidContext(), analytics = get()) }
         viewModel {
             QuizAppViewModel(
-                get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
+                get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
             )
         }
     }

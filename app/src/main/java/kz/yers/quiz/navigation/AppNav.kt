@@ -9,16 +9,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kz.yers.quiz.QuizAppViewModel
+import kz.yers.quiz.data.ads.AdsConsent
+import kz.yers.quiz.data.ads.AdsManager
 import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.analytics.Events
 import kz.yers.quiz.data.analytics.Params
 import kz.yers.quiz.model.AppState
+import kz.yers.quiz.ui.composable.hints.findActivity
 import kz.yers.quiz.ui.composable.scaffold.MainScaffold
 import kz.yers.quiz.ui.composable.screen.DailyChallengeScreen
 import kz.yers.quiz.ui.composable.screen.DuelHandoffScreen
@@ -83,10 +87,18 @@ fun AppNavHost(
     //  - Other root tabs + Settings: → Home.
     //  - Quiz: handled inside QuizScreen (forfeit confirm).
     //  - Loading/Result/Duel transient: → sensible parent.
+    // Between-run interstitial: shown (if the frequency cap allows) as the player leaves the
+    // result screen, never on top of it — the score reveal stays uninterrupted.
+    val ads: AdsManager = koinInject()
+    val hostActivity = LocalContext.current.findActivity()
+    val leaveResult: (() -> Unit) -> Unit = { next ->
+        if (hostActivity == null) next() else ads.maybeShowInterstitial(hostActivity, next)
+    }
+
     BackHandler(enabled = appState != AppState.Menu && appState !is AppState.Quiz) {
         when (appState) {
             AppState.Loading -> viewModel.abortQuiz()
-            AppState.Result -> viewModel.resetQuiz()
+            AppState.Result -> leaveResult(viewModel::resetQuiz)
             AppState.DuelHandoff, AppState.DuelResult -> viewModel.exitDuel()
             else -> viewModel.backToMenu()
         }
@@ -149,6 +161,8 @@ fun AppNavHost(
             composable(Routes.LEADERBOARD) {
                 LeaderboardScreen(
                     state = viewModel.leaderboardState.value,
+                    selectedMode = viewModel.leaderboardMode.value,
+                    onSelectMode = viewModel::selectLeaderboardMode,
                     onRetry = viewModel::loadLeaderboard,
                 )
             }
@@ -179,14 +193,23 @@ fun AppNavHost(
                     hintInventory = hintInventory,
                     questionHintState = questionHintState,
                     pendingAdType = pendingAd,
+                    lives = if (viewModel.livesEnabled) viewModel.lives.intValue else null,
+                    maxLives = QuizAppViewModel.MAX_LIVES,
+                    reviveOffered = viewModel.reviveOffered.value,
+                    reviveAdPending = viewModel.reviveAdPending.value,
+                    onAcceptRevive = viewModel::acceptRevive,
+                    onDeclineRevive = viewModel::declineRevive,
+                    onReviveAdResult = viewModel::onReviveAdResult,
                     onAnswerSelected = viewModel::submitAnswer,
                     onNextQuestion = viewModel::moveToNextQuestion,
-                    onPlaybackReady = viewModel::startTimer,
+                    onPlaybackReady = viewModel::onPlaybackReady,
                     onPlaybackError = {
                         analytics.log(
                             Events.QUIZ_PLAYBACK_ERROR,
                             Params.MODE to (viewModel.activeMode.value?.name ?: "UNKNOWN"),
                         )
+                        // A track that never loads must not leave the question without a clock.
+                        viewModel.onPlaybackReady()
                     },
                     onUseHint = viewModel::useHint,
                     onRequestAd = viewModel::requestRewardedAd,
@@ -207,10 +230,12 @@ fun AppNavHost(
                     totalQuestions = viewModel.lastRunTotal.intValue,
                     needToAskReview = viewModel.tries == 3,
                     onReviewSuccess = {},
-                    onRestart = viewModel::resetQuiz,
+                    onRestart = { leaveResult(viewModel::resetQuiz) },
                     onPlayAgain = {
-                        val mode = viewModel.activeMode.value
-                        if (mode != null) viewModel.startQuiz(mode) else viewModel.resetQuiz()
+                        leaveResult {
+                            val mode = viewModel.activeMode.value
+                            if (mode != null) viewModel.startQuiz(mode) else viewModel.resetQuiz()
+                        }
                     },
                 )
             }
@@ -263,6 +288,7 @@ fun AppNavHost(
                 )
             }
             composable(Routes.SETTINGS) {
+                val settingsCtx = androidx.compose.ui.platform.LocalContext.current
                 val a11y by viewModel.a11y
                 val isPosterEnabled by viewModel.isPosterEnabled
                 val soundEnabled by viewModel.soundEnabled
@@ -280,7 +306,11 @@ fun AppNavHost(
                             onDyslexiaToggle = viewModel::setDyslexiaFont,
                             onReplayTutorial = viewModel::replayTutorial,
                             onResetHighScore = viewModel::resetHighScore,
+                            onPrivacyOptions = {
+                                (settingsCtx as? android.app.Activity)?.let(AdsConsent::showPrivacyOptions)
+                            },
                         ),
+                    showPrivacyOptions = AdsConsent.privacyOptionsRequired(settingsCtx),
                 )
             }
             composable(Routes.NOTIFICATIONS) {

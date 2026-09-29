@@ -20,6 +20,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import kz.yers.quiz.data.ads.AdsConsent
+import kz.yers.quiz.data.ads.AdsManager
 import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.analytics.Events
 import kz.yers.quiz.data.analytics.Params
@@ -37,6 +39,7 @@ class MainActivity : ComponentActivity() {
     // navigation from outside. Same Gradle module = internal members are visible.
     internal val viewModel: QuizAppViewModel by viewModel()
     private val analytics: Analytics by inject()
+    private val ads: AdsManager by inject()
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -57,6 +60,8 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+        if (savedInstanceState == null) ads.onAppLaunch()
+        AdsConsent.gather(this, startAds = ads::initialize)
         maybeRequestNotificationPermission()
         routeFromIntent(intent)
         setContent {

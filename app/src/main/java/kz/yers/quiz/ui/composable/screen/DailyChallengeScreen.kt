@@ -36,7 +36,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kz.yers.quiz.QuizAppViewModel
 import kz.yers.quiz.model.DailyState
+import kz.yers.quiz.repo.DAILY_TRACKS
 import kz.yers.quiz.ui.composable.manga.MangaButton
 import kz.yers.quiz.ui.composable.manga.MangaButtonVariant
 import kz.yers.quiz.ui.composable.manga.MangaChip
@@ -50,9 +52,9 @@ import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
-import java.time.LocalDateTime
+import java.time.Duration
 import java.time.ZoneId
-import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 @Composable
 fun DailyChallengeScreen(
@@ -84,7 +86,7 @@ fun DailyChallengeScreen(
                     StreakStrip(state.streakDays)
                     StatsRow(state = state)
                     state.previousTrackTitle?.let {
-                        SpeechBubble(text = "Прошлый трек: «$it»")
+                        SpeechBubble(text = "Вчера звучали: $it")
                     }
                     Spacer(Modifier.height(8.dp))
                 }
@@ -183,7 +185,7 @@ private fun DailyHero(
                     if (played) {
                         "Вы уже сыграли сегодня. Возвращайтесь завтра!"
                     } else {
-                        "Один трек на всех. Угадай быстрее всех — попадёшь в топ."
+                        "$DAILY_TRACKS треков — одни на всех. Угадай больше и быстрее всех, чтобы попасть в топ."
                     },
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
@@ -194,9 +196,10 @@ private fun DailyHero(
             if (played) {
                 val a = state.attempt!!
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val solved = a.correctCount >= QuizAppViewModel.DAILY_SOLVED_MIN.coerceAtMost(a.totalTracks)
                     MangaChip(
-                        label = if (a.correct) "Угадал" else "Мимо",
-                        variant = if (a.correct) MangaChipVariant.Default else MangaChipVariant.Red,
+                        label = "Угадано ${a.correctCount}/${a.totalTracks}",
+                        variant = if (solved) MangaChipVariant.Default else MangaChipVariant.Red,
                     )
                     MangaChip(label = "${a.score} очков", variant = MangaChipVariant.Ink)
                 }
@@ -209,7 +212,7 @@ private fun DailyHero(
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MangaChip(
-                        label = "~30 сек",
+                        label = "~1 мин",
                         leadingIcon = {
                             Icon(
                                 imageVector = MangaIcons.Clock,
@@ -239,11 +242,11 @@ private fun DailyHero(
 
 @Composable
 private fun CountdownStrip() {
-    var remaining by remember { mutableLongStateOf(secondsToNextUtcMidnight()) }
+    var remaining by remember { mutableLongStateOf(secondsToNextLocalMidnight()) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000L)
-            remaining = secondsToNextUtcMidnight()
+            remaining = secondsToNextLocalMidnight()
         }
     }
     val hours = (remaining / 3600).coerceAtLeast(0L)
@@ -373,7 +376,7 @@ private fun StatsRow(state: DailyState) {
             modifier = Modifier.weight(1f),
         )
         StatPanel(
-            label = "угадали",
+            label = "угадали ${QuizAppViewModel.DAILY_SOLVED_MIN}+",
             value = stats?.let { "${it.solvedPct}%" } ?: "—",
             modifier = Modifier.weight(1f),
         )
@@ -423,8 +426,11 @@ private fun StatPanel(
     }
 }
 
-private fun secondsToNextUtcMidnight(): Long {
-    val now = LocalDateTime.now(ZoneId.of("UTC"))
-    val tomorrow = now.toLocalDate().plusDays(1).atStartOfDay()
-    return tomorrow.toEpochSecond(ZoneOffset.UTC) - now.toEpochSecond(ZoneOffset.UTC)
+// The daily is keyed by the device's local date (QuizAppViewModel), so it resets at local
+// midnight — the same moment the home screen's countdown targets.
+private fun secondsToNextLocalMidnight(): Long {
+    val zone = ZoneId.systemDefault()
+    val now = ZonedDateTime.now(zone)
+    val tomorrow = now.toLocalDate().plusDays(1).atStartOfDay(zone)
+    return Duration.between(now, tomorrow).seconds
 }

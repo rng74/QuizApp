@@ -18,7 +18,8 @@ data class DailyLiveStats(
 
 data class DailyAttemptSummary(
     val score: Int,
-    val correct: Boolean,
+    val correctCount: Int,
+    val totalTracks: Int,
     val durationMs: Long,
 )
 

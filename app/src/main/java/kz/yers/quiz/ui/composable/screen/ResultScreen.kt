@@ -76,7 +76,6 @@ fun ResultScreen(
     val frozenIsNewRecord = remember { isNewRecord }
     val frozenTint = remember { modeTint ?: QuizColors.tint }
     val frozenModeName = remember { modeDisplayName }
-    val frozenCoins = remember { coinsEarned }
     val frozenCorrect = remember { correctCount }
     val frozenTotal = remember { totalQuestions }
     val tint = frozenTint
@@ -177,7 +176,8 @@ fun ResultScreen(
             }
         }
 
-        if (frozenCoins > 0) {
+        // Read live, not frozen: the streak bonus lands a moment after the screen opens.
+        if (coinsEarned > 0) {
             Spacer(Modifier.height(16.dp))
             Box(
                 modifier =
@@ -187,7 +187,7 @@ fun ResultScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(
-                    text = "+$frozenCoins МОНЕТ",
+                    text = "+$coinsEarned МОНЕТ",
                     color = QuizColors.coinDeep,
                     fontFamily = RussoOneFamily,
                     fontSize = 15.sp,

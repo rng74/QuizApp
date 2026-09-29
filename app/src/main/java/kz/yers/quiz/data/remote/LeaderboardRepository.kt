@@ -11,12 +11,14 @@ import kotlinx.coroutines.withContext
 import kz.yers.quiz.data.analytics.Analytics
 import kz.yers.quiz.data.analytics.Events
 import kz.yers.quiz.data.analytics.Params
+import kz.yers.quiz.model.GameMode
 import kz.yers.quiz.model.LeaderboardEntry
 import kz.yers.quiz.model.LeaderboardUiState
 
 /**
- * Firebase-backed global leaderboard. Anonymous Auth + a single `leaderboard/{uid}` doc per
- * player holding their best solo score. No Cloud Functions: reads/writes go straight from the
+ * Firebase-backed leaderboards, one per [GameMode]: `leaderboards/{MODE}/scores/{uid}` holds the
+ * player's best score in that mode. The legacy `leaderboard/{uid}` doc (best score across all
+ * modes) is still written because friend profiles read it. No Cloud Functions: reads/writes go straight from the
  * client and are constrained by Firestore Security Rules (see firestore.rules).
  *
  * Requires (one-time, Firebase console): Anonymous auth enabled + Firestore database created
@@ -27,7 +29,9 @@ class LeaderboardRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
-    private val col get() = db.collection(COLLECTION)
+    private val legacyCol get() = db.collection(LEGACY_COLLECTION)
+
+    private fun modeCol(mode: GameMode) = db.collection(MODES_COLLECTION).document(mode.name).collection(SCORES)
 
     private suspend fun <T> await(task: com.google.android.gms.tasks.Task<T>): T =
         withContext(Dispatchers.IO) { Tasks.await(task) }
@@ -38,9 +42,10 @@ class LeaderboardRepository(
         return result.user?.uid ?: error("anonymous sign-in returned no user")
     }
 
-    suspend fun load(): LeaderboardUiState =
+    suspend fun load(mode: GameMode): LeaderboardUiState =
         runCatching {
             val uid = ensureUid()
+            val col = modeCol(mode)
             val topSnap =
                 await(
                     col.orderBy("score", Query.Direction.DESCENDING).limit(TOP_LIMIT).get(),
@@ -50,7 +55,7 @@ class LeaderboardRepository(
                     LeaderboardEntry(
                         rank = index + 1,
                         name = doc.getString("name").orEmpty().ifBlank { "Игрок" },
-                        mode = doc.getString("mode").orEmpty(),
+                        mode = mode.shortLabel,
                         score = (doc.getLong("score") ?: 0L).toInt(),
                         isYou = doc.id == uid,
                     )
@@ -78,6 +83,7 @@ class LeaderboardRepository(
             analytics.log(
                 Events.LEADERBOARD_LOAD,
                 Params.RESULT to "ok",
+                Params.MODE to mode.name,
                 Params.LEADERBOARD_TOTAL to total,
                 Params.LEADERBOARD_MY_RANK to (myRank ?: -1),
             )
@@ -91,7 +97,8 @@ class LeaderboardRepository(
             LeaderboardUiState.Offline
         }
 
-    /** Upsert the player's best score. Monotonic: only writes when [score] beats the stored one.
+    /** Upsert the player's best score for [mode] (and the legacy all-modes doc). Monotonic: each
+     *  doc is only written when [score] beats what it stores.
      *
      *  Scores ≤ 0 never write — a brand-new player whose first run timed out at 0
      *  should not appear on the global board with 0 points (the original `?: -1L`
@@ -102,26 +109,26 @@ class LeaderboardRepository(
     suspend fun submitScore(
         name: String,
         score: Int,
-        modeLabel: String,
+        mode: GameMode,
     ) {
         if (score <= 0) return
         runCatching {
             val uid = ensureUid()
-            val ref = col.document(uid)
+            val modeRef = modeCol(mode).document(uid)
+            val legacyRef = legacyCol.document(uid)
             await(
                 db.runTransaction { txn ->
-                    val current = txn.get(ref).getLong("score") ?: 0L
-                    if (score.toLong() > current) {
-                        txn.set(
-                            ref,
-                            mapOf(
-                                "name" to name.take(24),
-                                "score" to score.toLong(),
-                                "mode" to modeLabel,
-                                "updatedAt" to FieldValue.serverTimestamp(),
-                            ),
+                    // Firestore transactions require all reads before any write.
+                    val modeBest = txn.get(modeRef).getLong("score") ?: 0L
+                    val overallBest = txn.get(legacyRef).getLong("score") ?: 0L
+                    val entry =
+                        mapOf(
+                            "name" to name.take(24),
+                            "score" to score.toLong(),
+                            "updatedAt" to FieldValue.serverTimestamp(),
                         )
-                    }
+                    if (score.toLong() > modeBest) txn.set(modeRef, entry)
+                    if (score.toLong() > overallBest) txn.set(legacyRef, entry + ("mode" to mode.shortLabel))
                     null
                 },
             )
@@ -130,7 +137,9 @@ class LeaderboardRepository(
     }
 
     private companion object {
-        const val COLLECTION = "leaderboard"
+        const val LEGACY_COLLECTION = "leaderboard"
+        const val MODES_COLLECTION = "leaderboards"
+        const val SCORES = "scores"
         const val TOP_LIMIT = 30L
     }
 }

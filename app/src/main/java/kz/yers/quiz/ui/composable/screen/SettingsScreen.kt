@@ -59,6 +59,7 @@ data class SettingsActions(
     val onDyslexiaToggle: (Boolean) -> Unit,
     val onReplayTutorial: () -> Unit,
     val onResetHighScore: () -> Unit,
+    val onPrivacyOptions: () -> Unit = {},
 )
 
 @Composable
@@ -67,6 +68,7 @@ fun SettingsScreen(
     soundEnabled: Boolean,
     a11y: A11yState,
     actions: SettingsActions,
+    showPrivacyOptions: Boolean = false,
 ) {
     // Both destructive actions surface a confirm before firing the action — a stray
     // tap on "Сбросить рекорд" or "Показать обучение снова" would otherwise blow
@@ -196,6 +198,14 @@ fun SettingsScreen(
                             modifier = Modifier.size(20.dp),
                         )
                     }
+                    if (showPrivacyOptions) {
+                        Divider()
+                        SettingsLinkRow(
+                            title = "Конфиденциальность",
+                            subtitle = "Изменить согласие на персонализацию рекламы",
+                            onClick = actions.onPrivacyOptions,
+                        )
+                    }
                     Divider()
                     Spacer(Modifier.height(8.dp))
                     MangaButton(
@@ -216,6 +226,49 @@ fun SettingsScreen(
                 Spacer(Modifier.height(8.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun SettingsLinkRow(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    val press = rememberMangaPressState()
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .mangaClickable(press, onClick = onClick)
+                .mangaPressNudge(press)
+                .padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val scale = bodyScale()
+        val family = bodyFontFamily()
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = QuizColors.ink,
+                fontWeight = FontWeight.Medium,
+                fontFamily = family,
+                fontSize = (15f * scale).sp,
+            )
+            Text(
+                text = subtitle,
+                color = QuizColors.ink.copy(alpha = 0.6f),
+                fontFamily = family,
+                fontSize = (12f * scale).sp,
+                lineHeight = (16f * scale).sp,
+            )
+        }
+        Icon(
+            imageVector = MangaIcons.ChevronRight,
+            contentDescription = null,
+            tint = QuizColors.ink,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

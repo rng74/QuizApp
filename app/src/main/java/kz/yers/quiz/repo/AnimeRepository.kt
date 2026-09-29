@@ -6,6 +6,8 @@ import androidx.core.content.edit
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kz.yers.quiz.HIGH_SCORE
 import kz.yers.quiz.model.AnimeInfo
@@ -17,12 +19,21 @@ class AnimeRepository(
     private val gson: Gson,
     private val sharedPreferences: SharedPreferences,
 ) {
-    private var animeList: List<AnimeInfo> = emptyList()
+    @Volatile private var animeList: List<AnimeInfo> = emptyList()
+
+    /** Distinct `titleRu` values, built once at load so option generation doesn't rescan the list. */
+    @Volatile private var allTitles: List<String> = emptyList()
+    private val loadMutex = Mutex()
+
+    /**
+     * Parses `info.json` (~4.7 MB, ~15k entries) ahead of the first quiz. Called at app start so
+     * the parse overlaps the home screen instead of blocking "Загрузка…". Safe to race with a
+     * quiz start: the second caller waits on the same load instead of parsing again.
+     */
+    suspend fun preload() = ensureLoaded()
 
     suspend fun getRandomizedQuestions(numberOfQuestions: Int): List<QuizQuestion> {
-        if (animeList.isEmpty()) {
-            loadAnimeData()
-        }
+        ensureLoaded()
 
         return generateQuizQuestions(animeList, numberOfQuestions)
     }
@@ -31,9 +42,7 @@ class AnimeRepository(
         numberOfQuestions: Int,
         rating: Float,
     ): List<QuizQuestion> {
-        if (animeList.isEmpty()) {
-            loadAnimeData()
-        }
+        ensureLoaded()
 
         return generateQuizQuestions(animeList, numberOfQuestions, rating, true)
     }
@@ -42,34 +51,26 @@ class AnimeRepository(
         numberOfQuestions: Int,
         rating: Float,
     ): List<QuizQuestion> {
-        if (animeList.isEmpty()) {
-            loadAnimeData()
-        }
+        ensureLoaded()
 
         return generateQuizQuestions(animeList, numberOfQuestions, rating, false)
     }
 
     /**
-     * Deterministic single track for the Daily Challenge.
-     *
-     * The track for a given [epochDay] is identical on every device/run (no server needed) — the
-     * Firestore daily-stats model assumes one shared track per day. The pool is heuristically
-     * curated (recognizable openings, [DAILY_MIN_RATING]+), then put through a fixed-seed
-     * permutation so the order is non-sequential to players. Indexing that permutation by
-     * [epochDay] makes each anime recur exactly every `pool.size` days, so as long as the
-     * curated pool has at least [DAILY_NO_REPEAT_WINDOW] entries no anime can repeat within a
-     * 90-day window. Falls back to the broad distinct pool if curation yields too few.
+     * Deterministic [DAILY_TRACKS]-track set for the Daily Challenge — identical on every
+     * device/run (no server needed); the Firestore daily-stats model assumes one shared set per
+     * day. Selection and the 90-day no-repeat guarantee live in [pickDailyTitles].
      *
      * Caveat: the epochDay→track map is stable only while `info.json` and the curation predicate
      * are unchanged. A future content-pipeline regen would shift the schedule; clients on
      * different app versions could then see different daily tracks for the same day (already true
      * before this change, and acceptable).
      */
-    suspend fun getDailyQuestion(epochDay: Long): QuizQuestion? {
-        if (animeList.isEmpty()) loadAnimeData()
-        val correct = pickDailyTitle(animeList, epochDay) ?: return null
-        val options = generateOptions(correct)
-        return QuizQuestion(correctAnswer = correct, options = options)
+    suspend fun getDailyQuestions(epochDay: Long): List<QuizQuestion> {
+        ensureLoaded()
+        return pickDailyTitles(animeList, epochDay).map { correct ->
+            QuizQuestion(correctAnswer = correct, options = generateOptions(correct))
+        }
     }
 
     /**
@@ -82,7 +83,7 @@ class AnimeRepository(
         count: Int,
         minRatingGt: Float,
     ): List<QuizQuestion> {
-        if (animeList.isEmpty()) loadAnimeData()
+        ensureLoaded()
         val rng = Random(seed)
         val pool =
             animeList
@@ -110,15 +111,21 @@ class AnimeRepository(
         return (distractors + correct.titleRu).shuffled(rng)
     }
 
-    private suspend fun loadAnimeData() {
-        withContext(Dispatchers.IO) {
-            val jsonString =
-                context.assets.open("info.json")
-                    .bufferedReader()
-                    .use { it.readText() }
-
-            val listType = object : TypeToken<List<AnimeInfo>>() {}.type
-            animeList = gson.fromJson(jsonString, listType)
+    private suspend fun ensureLoaded() {
+        if (animeList.isNotEmpty()) return
+        loadMutex.withLock {
+            if (animeList.isNotEmpty()) return
+            withContext(Dispatchers.IO) {
+                // Stream straight from the asset: reading the whole file into a String first
+                // doubled peak memory and added an extra full pass over 4.7 MB.
+                val listType = object : TypeToken<List<AnimeInfo>>() {}.type
+                val list: List<AnimeInfo> =
+                    context.assets.open("info.json").bufferedReader().use { reader ->
+                        gson.fromJson(reader, listType)
+                    }
+                allTitles = list.map { it.titleRu }.distinct()
+                animeList = list
+            }
         }
     }
 
@@ -154,28 +161,17 @@ class AnimeRepository(
         return questions
     }
 
-    private fun generateOptions(
-        correctAnime: AnimeInfo,
-        rating: Float? = null,
-        isGreater: Boolean? = null,
-    ): List<String> {
-        val allTitles =
-            animeList.filter {
-                (
-                    if (rating != null && isGreater != null) {
-                        if (isGreater) {
-                            it.rating > rating
-                        } else {
-                            it.rating <= rating
-                        }
-                    } else {
-                        true
-                    }
-                ) && it.titleRu != correctAnime.titleRu
-            }.map { it.titleRu }.distinct()
-        val incorrectOptions = allTitles.shuffled().take(3)
-        val options = incorrectOptions + correctAnime.titleRu
-        return options.shuffled()
+    private fun generateOptions(correctAnime: AnimeInfo): List<String> {
+        val titles = allTitles
+        // Uniform picks from the precomputed distinct titles: same distribution as shuffling
+        // the whole list, but O(1) per question instead of filter+distinct over ~15k entries.
+        val wanted = minOf(3, titles.size - 1)
+        val incorrect = LinkedHashSet<String>(4)
+        while (incorrect.size < wanted) {
+            val candidate = titles[Random.nextInt(titles.size)]
+            if (candidate != correctAnime.titleRu) incorrect += candidate
+        }
+        return (incorrect.toList() + correctAnime.titleRu).shuffled()
     }
 
     fun setHighScore(score: Int) {
@@ -196,24 +192,39 @@ class AnimeRepository(
     }
 }
 
+const val DAILY_TRACKS = 5
 private const val DAILY_MIN_RATING = 7.0f
 private const val DAILY_SHUFFLE_SEED = 0x5DA17_4D41L
 private const val DAILY_NO_REPEAT_WINDOW = 90
 
 /**
  * Pure daily picker (no I/O, no un-seeded randomness) so the 90-day no-repeat invariant is
- * unit-testable. Same [list] + [epochDay] always yields the same [AnimeInfo] on every device.
+ * unit-testable. Same [list] + [epochDay] always yields the same [DAILY_TRACKS] titles, in the
+ * same order, on every device.
  *
  * The pool is heuristically curated (recognizable openings, [DAILY_MIN_RATING]+), then put
- * through a fixed-seed permutation so the order is non-sequential. Indexing that permutation by
- * [epochDay] makes each anime recur exactly every `pool.size` days, so a curated pool of at
- * least [DAILY_NO_REPEAT_WINDOW] entries can never repeat an anime within a 90-day window.
- * Falls back to the broad distinct pool if curation yields too few.
+ * through a fixed-seed permutation so the order is non-sequential. Day `d` takes the block
+ * `[d·N, d·N + N)` of that permutation (wrapping), so each anime recurs exactly every
+ * `pool.size` blocks; a curated pool of at least [DAILY_NO_REPEAT_WINDOW]·N entries can never
+ * repeat an anime within a 90-day window. Falls back to the broad distinct pool otherwise.
  */
-internal fun pickDailyTitle(
+internal fun pickDailyTitles(
     list: List<AnimeInfo>,
     epochDay: Long,
-): AnimeInfo? {
+    count: Int = DAILY_TRACKS,
+): List<AnimeInfo> {
+    val pool = dailyPool(list, count)
+    if (pool.isEmpty()) return emptyList()
+    val size = pool.size.toLong()
+    return (0 until minOf(count, pool.size)).map { k ->
+        pool[((epochDay * count + k).mod(size)).toInt()]
+    }
+}
+
+private fun dailyPool(
+    list: List<AnimeInfo>,
+    count: Int,
+): List<AnimeInfo> {
     val curated =
         list
             .filter {
@@ -223,13 +234,9 @@ internal fun pickDailyTitle(
             }
             .distinctBy { it.titleRu }
             .sortedBy { it.titleRu }
-    val pool =
-        if (curated.size >= DAILY_NO_REPEAT_WINDOW) {
-            curated.shuffled(Random(DAILY_SHUFFLE_SEED))
-        } else {
-            list.filter { it.titleRu.isNotBlank() }.distinctBy { it.titleRu }
-        }
-    if (pool.isEmpty()) return null
-    val index = (epochDay.mod(pool.size.toLong())).toInt()
-    return pool[index]
+    return if (curated.size >= DAILY_NO_REPEAT_WINDOW * count) {
+        curated.shuffled(Random(DAILY_SHUFFLE_SEED))
+    } else {
+        list.filter { it.titleRu.isNotBlank() }.distinctBy { it.titleRu }
+    }
 }
