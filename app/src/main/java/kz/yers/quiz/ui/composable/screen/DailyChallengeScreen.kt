@@ -52,9 +52,9 @@ import kz.yers.quiz.ui.theme.QuizRadii
 import kz.yers.quiz.ui.theme.QuizShadows
 import kz.yers.quiz.ui.theme.QuizStrokes
 import kz.yers.quiz.ui.theme.RussoOneFamily
-import java.time.LocalDateTime
+import java.time.Duration
 import java.time.ZoneId
-import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 @Composable
 fun DailyChallengeScreen(
@@ -242,11 +242,11 @@ private fun DailyHero(
 
 @Composable
 private fun CountdownStrip() {
-    var remaining by remember { mutableLongStateOf(secondsToNextUtcMidnight()) }
+    var remaining by remember { mutableLongStateOf(secondsToNextLocalMidnight()) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000L)
-            remaining = secondsToNextUtcMidnight()
+            remaining = secondsToNextLocalMidnight()
         }
     }
     val hours = (remaining / 3600).coerceAtLeast(0L)
@@ -426,8 +426,11 @@ private fun StatPanel(
     }
 }
 
-private fun secondsToNextUtcMidnight(): Long {
-    val now = LocalDateTime.now(ZoneId.of("UTC"))
-    val tomorrow = now.toLocalDate().plusDays(1).atStartOfDay()
-    return tomorrow.toEpochSecond(ZoneOffset.UTC) - now.toEpochSecond(ZoneOffset.UTC)
+// The daily is keyed by the device's local date (QuizAppViewModel), so it resets at local
+// midnight — the same moment the home screen's countdown targets.
+private fun secondsToNextLocalMidnight(): Long {
+    val zone = ZoneId.systemDefault()
+    val now = ZonedDateTime.now(zone)
+    val tomorrow = now.toLocalDate().plusDays(1).atStartOfDay(zone)
+    return Duration.between(now, tomorrow).seconds
 }

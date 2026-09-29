@@ -284,8 +284,9 @@ private fun ProfileStatsRow(
     state: ProfileState,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         StatTile("игр", state.totalGames.toString(), modifier = Modifier.weight(1f))
+        StatTile("точность", "${state.accuracyPct}%", modifier = Modifier.weight(1f))
         StatTile(
             label = "серия",
             value = state.currentStreakDays.toString(),

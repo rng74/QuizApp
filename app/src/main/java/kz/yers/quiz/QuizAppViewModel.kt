@@ -1102,6 +1102,12 @@ class QuizAppViewModel(
         val answeredCount = (answeredIndex + 1).coerceAtMost(total)
         val dailyTitles = if (isDaily) quizQuestions.joinToString(" · ") { it.correctAnswer.titleRu } else ""
         val dailySolved = correctCount >= DAILY_SOLVED_MIN
+        // Set before navigating so the result screen's first frame already shows the run's coins;
+        // the streak bonus (known only after the async streak update) is added below.
+        val perCorrect = if (isDaily) DAILY_COINS_PER_CORRECT else COINS_PER_CORRECT
+        val completionBonus = if (!isDaily && completed) RUN_COMPLETE_BONUS else 0
+        val baseCoins = correctCount * perCorrect + completionBonus
+        lastRunCoins.intValue = baseCoins
 
         if (mode != null) {
             viewModelScope.launch {
@@ -1131,9 +1137,7 @@ class QuizAppViewModel(
                     }
                 }
                 val streakBonus = updateStreak()
-                val perCorrect = if (isDaily) DAILY_COINS_PER_CORRECT else COINS_PER_CORRECT
-                val completionBonus = if (!isDaily && completed) RUN_COMPLETE_BONUS else 0
-                val earned = correctCount * perCorrect + completionBonus + streakBonus
+                val earned = baseCoins + streakBonus
                 if (earned > 0) {
                     mutateCoins { it + earned }
                     analytics.log(
