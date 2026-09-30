@@ -7,8 +7,10 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -113,6 +115,14 @@ class QuizAppViewModel(
     val dailyState = mutableStateOf(DailyState())
     val profileState = mutableStateOf(ProfileState())
 
+    // Live stats hit Firestore with no timeout, so at most one fetch is in flight; the day it
+    // belongs to lets a local refresh keep today's stats without resurrecting yesterday's.
+    private var dailyStatsJob: Job? = null
+    private var liveStatsDay: Long? = null
+
+    // Today's daily questions, built ahead of time so "Играть" skips the loading screen.
+    private var dailyQuestions: Pair<Long, Deferred<List<QuizQuestion>>>? = null
+
     val a11y = mutableStateOf(A11yState())
     val soundEnabled = mutableStateOf(true)
 
@@ -170,6 +180,12 @@ class QuizAppViewModel(
         // "Играть" doesn't sit on "Загрузка…" for the whole 4.7 MB parse.
         // A failure here is retried by the quiz start's own load.
         viewModelScope.launch { runCatching { repository.preload() } }
+        // Warm the Daily/Profile tabs so their first open already shows real data.
+        prefetchDailyQuestions(LocalDate.now(ZoneId.systemDefault()).toEpochDay())
+        viewModelScope.launch {
+            refreshDailyLocalState()
+            refreshProfileState()
+        }
         viewModelScope.launch {
             notifications.observe().collect { notificationsList.value = it }
         }
@@ -517,22 +533,35 @@ class QuizAppViewModel(
     }
 
     fun openDaily() {
+        // Navigate first: the local state is refreshed right after (milliseconds), and the
+        // Firestore stats land whenever the network answers ("—" until then).
+        val today = LocalDate.now(ZoneId.systemDefault())
+        val current = dailyState.value
+        if (current.epochDay != today.toEpochDay()) {
+            dailyState.value =
+                DailyState(
+                    epochDay = today.toEpochDay(),
+                    today = dailyDateLabel(today),
+                    streakDays = streakDays.intValue,
+                    liveStats = current.liveStats.takeIf { liveStatsDay == today.toEpochDay() },
+                )
+        }
+        appState.value = AppState.Daily
+        prefetchDailyQuestions(today.toEpochDay())
         viewModelScope.launch {
-            refreshDailyState()
-            appState.value = AppState.Daily
+            refreshDailyLocalState()
             analytics.log(
                 Events.DAILY_OPENED,
                 Params.STREAK_DAYS to streakDays.intValue,
                 "already_played" to (dailyState.value.attempt != null),
             )
         }
+        refreshDailyLiveStats()
     }
 
     fun openProfile() {
-        viewModelScope.launch {
-            refreshProfileState()
-            appState.value = AppState.Profile
-        }
+        appState.value = AppState.Profile
+        viewModelScope.launch { refreshProfileState() }
     }
 
     fun backToMenu() {
@@ -727,7 +756,8 @@ class QuizAppViewModel(
         appState.value = AppState.Menu
     }
 
-    private suspend fun refreshDailyState() {
+    /** Local (Room + DataStore) part of [dailyState]; never waits on the network. */
+    private suspend fun refreshDailyLocalState() {
         val today = LocalDate.now(ZoneId.systemDefault())
         val epochDay = today.toEpochDay()
         val attempt =
@@ -735,13 +765,10 @@ class QuizAppViewModel(
         val yesterday =
             withContext(Dispatchers.IO) { dailyAttemptDao.forDay(epochDay - 1) }
         val streak = userPrefs.currentStreakDays.first()
-        val locale = Locale.forLanguageTag("ru")
-        val dateLabel =
-            today.format(DateTimeFormatter.ofPattern("d MMMM yyyy · EEEE", locale))
         dailyState.value =
             DailyState(
                 epochDay = epochDay,
-                today = dateLabel,
+                today = dailyDateLabel(today),
                 streakDays = streak,
                 attempt =
                     attempt?.let {
@@ -753,18 +780,40 @@ class QuizAppViewModel(
                         )
                     },
                 previousTrackTitle = yesterday?.trackTitle,
+                // Written concurrently by refreshDailyLiveStats — don't drop today's stats.
+                liveStats = dailyState.value.liveStats.takeIf { liveStatsDay == epochDay },
             )
-        refreshDailyLiveStats()
     }
 
-    /** Pull today's cross-player stats (best-effort) into [dailyState]. Safe offline. */
-    private suspend fun refreshDailyLiveStats() {
-        val epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay()
-        val myScore = withContext(Dispatchers.IO) { dailyAttemptDao.forDay(epochDay) }?.score
-        val stats = dailyStats.loadStats(epochDay, myScore)
-        if (stats != null) {
-            dailyState.value = dailyState.value.copy(liveStats = stats)
+    private fun dailyDateLabel(day: LocalDate): String =
+        day.format(DateTimeFormatter.ofPattern("d MMMM yyyy · EEEE", Locale.forLanguageTag("ru")))
+
+    /**
+     * Pull today's cross-player stats (best-effort) into [dailyState]. Safe offline. Fire-and-forget:
+     * a fetch already in flight is reused rather than stacking another one on each tab tap.
+     */
+    private fun refreshDailyLiveStats() {
+        if (dailyStatsJob?.isActive == true) return
+        dailyStatsJob =
+            viewModelScope.launch {
+                val epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay()
+                val myScore = withContext(Dispatchers.IO) { dailyAttemptDao.forDay(epochDay) }?.score
+                val stats = dailyStats.loadStats(epochDay, myScore)
+                if (stats != null) {
+                    liveStatsDay = epochDay
+                    dailyState.value = dailyState.value.copy(liveStats = stats)
+                }
+            }
+    }
+
+    /** Start (or reuse) building [epochDay]'s daily questions in the background. */
+    private fun prefetchDailyQuestions(epochDay: Long): Deferred<List<QuizQuestion>> {
+        dailyQuestions?.let { (day, job) ->
+            if (day == epochDay && !job.isCancelled) return job
         }
+        return viewModelScope
+            .async(Dispatchers.Default) { repository.getDailyQuestions(epochDay) }
+            .also { dailyQuestions = epochDay to it }
     }
 
     private suspend fun refreshProfileState() {
@@ -836,10 +885,8 @@ class QuizAppViewModel(
 
     fun startDailyRun() {
         viewModelScope.launch {
-            val attempt =
-                withContext(Dispatchers.IO) {
-                    dailyAttemptDao.forDay(LocalDate.now(ZoneId.systemDefault()).toEpochDay())
-                }
+            val epochDay = LocalDate.now(ZoneId.systemDefault()).toEpochDay()
+            val attempt = withContext(Dispatchers.IO) { dailyAttemptDao.forDay(epochDay) }
             if (attempt != null) return@launch
             tries += 1
             isDailyRun = true
@@ -847,12 +894,13 @@ class QuizAppViewModel(
             resetRunState()
             activeMode.value = GameMode.NORMAL
             runStartElapsedMs = SystemClock.elapsedRealtime()
-            appState.value = AppState.Loading
-            val questions =
-                withContext(Dispatchers.IO) {
-                    repository.getDailyQuestions(LocalDate.now(ZoneId.systemDefault()).toEpochDay())
-                }
+            val prefetched = prefetchDailyQuestions(epochDay)
+            // Usually built while the player was on the Daily screen; only show "Загрузка…"
+            // if it's genuinely still running.
+            if (!prefetched.isCompleted) appState.value = AppState.Loading
+            val questions = runCatching { prefetched.await() }.getOrDefault(emptyList())
             if (questions.isEmpty()) {
+                dailyQuestions = null // failed or empty — rebuild on the next tap
                 appState.value = AppState.Daily
                 return@launch
             }
